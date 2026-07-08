@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Map Room</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+
 <style>
   :root{
     --bg: #EAE0CC;
@@ -25,7 +24,7 @@
     --radius: 14px;
   }
   *{box-sizing:border-box;}
-  html,body{margin:0;padding:0;color:var(--text);font-family:'IBM Plex Sans',sans-serif;height:100%;}
+  html,body{margin:0;padding:0;color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;height:100%;}
   body{
     background:
       radial-gradient(ellipse 900px 500px at 50% -10%, rgba(255,251,240,.5) 0%, transparent 60%),
@@ -33,16 +32,16 @@
       linear-gradient(180deg, #EFE6D3 0%, #E7DAC0 100%);
     background-attachment:fixed;
   }
-  h1,h2,h3{font-family:'Newsreader',serif;font-weight:500;margin:0;}
+  h1,h2,h3{font-family:Georgia,'Iowan Old Style','Palatino Linotype',Palatino,serif;font-weight:500;margin:0;}
   button{font-family:inherit;cursor:pointer;}
   .app{max-width:1040px;margin:0 auto;padding:28px 20px 80px;}
   .header{margin-bottom:22px;display:flex;gap:14px;align-items:flex-start;}
-  .header .eyebrow{color:var(--business);font-family:'Newsreader',serif;font-style:italic;font-weight:500;font-size:15px;letter-spacing:.02em;margin-bottom:2px;}
+  .header .eyebrow{color:var(--business);font-family:Georgia,'Iowan Old Style','Palatino Linotype',Palatino,serif;font-style:italic;font-weight:500;font-size:15px;letter-spacing:.02em;margin-bottom:2px;}
   .header h1{font-size:34px;color:var(--text);letter-spacing:-.01em;}
   .header p{color:var(--muted);font-size:14.5px;margin-top:8px;max-width:560px;line-height:1.55;}
 
   .tabs{display:flex;gap:4px;margin:24px 0 20px;border-bottom:1px solid var(--line);}
-  .tab{background:none;border:none;color:var(--muted);padding:10px 18px;font-size:15px;font-family:'Newsreader',serif;font-style:italic;border-bottom:2px solid transparent;transition:.18s;}
+  .tab{background:none;border:none;color:var(--muted);padding:10px 18px;font-size:15px;font-family:Georgia,'Iowan Old Style','Palatino Linotype',Palatino,serif;font-style:italic;border-bottom:2px solid transparent;transition:.18s;}
   .tab.active{color:var(--text);border-bottom:2px solid var(--business);}
   .tab:hover{color:var(--text);}
 
@@ -76,7 +75,7 @@
   .node circle{transition:r .15s;}
   .node:hover circle{r:11;}
   .node text{font-size:9px;fill:var(--on-accent);font-weight:600;pointer-events:none;}
-  .zone-label{font-size:12px;fill:var(--muted);font-family:'Newsreader',serif;font-style:italic;letter-spacing:.01em;}
+  .zone-label{font-size:12px;fill:var(--muted);font-family:Georgia,'Iowan Old Style','Palatino Linotype',Palatino,serif;font-style:italic;letter-spacing:.01em;}
   .empty-map{color:var(--muted);text-align:center;padding:40px 20px;font-size:14px;}
 
   /* Modal */
@@ -426,6 +425,7 @@ const URGE_TIPS = [
 ];
 
 const LS_PREFIX = 'maproom_';
+const IS_ELECTRON = !!(window.electronAPI);
 function lsGet(key){
   try{ const v = localStorage.getItem(LS_PREFIX+key); return v ? JSON.parse(v) : null; }
   catch(e){ return null; }
@@ -435,21 +435,50 @@ function lsSet(key, value){
   catch(e){ return false; }
 }
 function storageIsAvailable(){
+  if(IS_ELECTRON) return true;
   try{ const k='__mr_test__'; localStorage.setItem(k,'1'); localStorage.removeItem(k); return true; }
   catch(e){ return false; }
+}
+async function persistAll(){
+  if(IS_ELECTRON){
+    await window.electronAPI.saveData({
+      map_entries: entries, urge_logs: urges, action_items: actions,
+      energy_logs: energyLogs, daily_plan: dailyPlan, wishlist: wishlist, custom_tags: customTags
+    });
+  } else {
+    lsSet('map_entries', entries); lsSet('urge_logs', urges); lsSet('action_items', actions);
+    lsSet('energy_logs', energyLogs); lsSet('daily_plan', dailyPlan); lsSet('wishlist', wishlist); lsSet('custom_tags', customTags);
+  }
 }
 
 async function loadAll(){
   if(!storageIsAvailable()){
     document.getElementById('storage-warning').style.display = 'block';
   }
-  entries = lsGet('map_entries') || [];
-  urges = lsGet('urge_logs') || [];
-  actions = lsGet('action_items') || [];
-  energyLogs = lsGet('energy_logs') || [];
-  dailyPlan = lsGet('daily_plan') || [];
-  wishlist = lsGet('wishlist') || [];
-  customTags = lsGet('custom_tags') || [];
+  let data = null;
+  if(IS_ELECTRON){
+    data = await window.electronAPI.loadData();
+  }
+  if(data){
+    entries = data.map_entries || [];
+    urges = data.urge_logs || [];
+    actions = data.action_items || [];
+    energyLogs = data.energy_logs || [];
+    dailyPlan = data.daily_plan || [];
+    wishlist = data.wishlist || [];
+    customTags = data.custom_tags || [];
+  } else {
+    // no iCloud file yet (or running as a plain webpage) — fall back to localStorage,
+    // and if we're in Electron, write it straight into the iCloud file so it's there next time
+    entries = lsGet('map_entries') || [];
+    urges = lsGet('urge_logs') || [];
+    actions = lsGet('action_items') || [];
+    energyLogs = lsGet('energy_logs') || [];
+    dailyPlan = lsGet('daily_plan') || [];
+    wishlist = lsGet('wishlist') || [];
+    customTags = lsGet('custom_tags') || [];
+    if(IS_ELECTRON) await persistAll();
+  }
   rebuildTagMeta();
   const migrated = migrateActionData();
   if(migrated) await saveActions();
@@ -474,13 +503,13 @@ function migrateActionData(){
   });
   return changed;
 }
-async function saveEntries(){ lsSet('map_entries', entries); }
-async function saveUrges(){ lsSet('urge_logs', urges); }
-async function saveActions(){ lsSet('action_items', actions); }
-async function saveEnergy(){ lsSet('energy_logs', energyLogs); }
-async function saveDailyPlan(){ lsSet('daily_plan', dailyPlan); }
-async function saveWishlist(){ lsSet('wishlist', wishlist); }
-async function saveCustomTags(){ lsSet('custom_tags', customTags); }
+async function saveEntries(){ await persistAll(); }
+async function saveUrges(){ await persistAll(); }
+async function saveActions(){ await persistAll(); }
+async function saveEnergy(){ await persistAll(); }
+async function saveDailyPlan(){ await persistAll(); }
+async function saveWishlist(){ await persistAll(); }
+async function saveCustomTags(){ await persistAll(); }
 
 // Tabs
 document.querySelectorAll('.tab').forEach(t=>{
