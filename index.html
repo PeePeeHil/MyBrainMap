@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Map Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #EAE0CC;
+    --surface: #F6F0E3;
+    --surface-2: #E6D9C2;
+    --line: #D2C0A0;
+    --text: #3B2E22;
+    --muted: #8A7860;
+    --urge: #5D6E90;
+    --job: #5F7856;
+    --business: #8B5E2A;
+    --self: #8C5A6E;
+    --other: #79705D;
+    --sleep: #4B7A73;
+    --danger: #A34434;
+    --on-accent: #FAF4E7;
+    --radius: 14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;color:var(--text);font-family:'IBM Plex Sans',sans-serif;height:100%;}
+  body{
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(255,251,240,.5) 0%, transparent 60%),
+      radial-gradient(ellipse 700px 500px at 100% 100%, rgba(139,94,42,.06) 0%, transparent 55%),
+      linear-gradient(180deg, #EFE6D3 0%, #E7DAC0 100%);
+    background-attachment:fixed;
+  }
+  h1,h2,h3{font-family:'Newsreader',serif;font-weight:500;margin:0;}
+  button{font-family:inherit;cursor:pointer;}
+  .app{max-width:1040px;margin:0 auto;padding:28px 20px 80px;}
+  .header{margin-bottom:22px;display:flex;gap:14px;align-items:flex-start;}
+  .header .eyebrow{color:var(--business);font-family:'Newsreader',serif;font-style:italic;font-weight:500;font-size:15px;letter-spacing:.02em;margin-bottom:2px;}
+  .header h1{font-size:34px;color:var(--text);letter-spacing:-.01em;}
+  .header p{color:var(--muted);font-size:14.5px;margin-top:8px;max-width:560px;line-height:1.55;}
+
+  .tabs{display:flex;gap:4px;margin:24px 0 20px;border-bottom:1px solid var(--line);}
+  .tab{background:none;border:none;color:var(--muted);padding:10px 18px;font-size:15px;font-family:'Newsreader',serif;font-style:italic;border-bottom:2px solid transparent;transition:.18s;}
+  .tab.active{color:var(--text);border-bottom:2px solid var(--business);}
+  .tab:hover{color:var(--text);}
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  .card{position:relative;background:linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 14%);border:1px solid var(--line);border-radius:var(--radius);padding:19px 18px 18px;margin-bottom:16px;overflow:hidden;}
+  .card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg, transparent, var(--business) 18%, var(--business) 82%, transparent);opacity:.55;}
+
+  /* Capture */
+  .capture textarea{width:100%;min-height:70px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;color:var(--text);font-family:inherit;font-size:15px;padding:12px;resize:vertical;}
+  .capture textarea:focus{outline:1px solid var(--business);}
+  .tag-row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;}
+  .tag-btn{border:1px solid var(--line);background:var(--surface-2);color:var(--muted);border-radius:20px;padding:6px 14px;font-size:13.5px;transition:.15s;}
+  .tag-btn.selected{color:var(--on-accent);font-weight:600;border-color:transparent;}
+  .tag-btn[data-tag="urge"].selected{background:var(--urge);}
+  .tag-btn[data-tag="job"].selected{background:var(--job);}
+  .tag-btn[data-tag="business"].selected{background:var(--business);}
+  .tag-btn[data-tag="self"].selected{background:var(--self);}
+  .tag-btn[data-tag="other"].selected{background:var(--other);}
+  .tag-btn[data-tag="sleep"].selected{background:var(--sleep);}
+  .save-btn{background:var(--business);color:var(--on-accent);border:none;border-radius:10px;padding:10px 18px;font-size:14.5px;font-weight:600;box-shadow:inset 0 1px 0 rgba(255,255,255,.25);transition:transform .1s, filter .15s;}
+  .save-btn:hover{filter:brightness(1.08);}
+  .save-btn:active{transform:scale(.97);}
+  .save-btn:disabled{opacity:.4;cursor:default;}
+
+  /* Map */
+  .map-wrap{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:10px;}
+  svg{width:100%;height:auto;display:block;}
+  .node{cursor:pointer;}
+  .node circle{transition:r .15s;}
+  .node:hover circle{r:11;}
+  .node text{font-size:9px;fill:var(--on-accent);font-weight:600;pointer-events:none;}
+  .zone-label{font-size:12px;fill:var(--muted);font-family:'Newsreader',serif;font-style:italic;letter-spacing:.01em;}
+  .empty-map{color:var(--muted);text-align:center;padding:40px 20px;font-size:14px;}
+
+  /* Modal */
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(8,15,13,.7);align-items:center;justify-content:center;z-index:50;padding:20px;}
+  .modal-bg.open{display:flex;}
+  .modal{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);max-width:480px;width:100%;padding:22px;max-height:85vh;overflow-y:auto;}
+  .modal h3{font-size:18px;margin-bottom:4px;}
+  .modal .original{color:var(--muted);font-size:13.5px;font-style:italic;margin:10px 0 16px;padding:10px;background:var(--surface-2);border-radius:8px;}
+  .q-label{font-size:13.5px;color:var(--muted);margin:14px 0 6px;}
+  .modal textarea, .modal input[type=text]{width:100%;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:10px;font-family:inherit;font-size:14px;}
+  .modal textarea{min-height:56px;resize:vertical;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;}
+  .btn-ghost{background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:9px 14px;font-size:13.5px;transition:transform .1s, border-color .15s;}
+  .btn-ghost:hover{border-color:var(--muted);}
+  .btn-ghost:active{transform:scale(.97);}
+  .btn-primary{background:var(--business);color:var(--on-accent);border:none;border-radius:8px;padding:9px 16px;font-size:13.5px;font-weight:600;box-shadow:inset 0 1px 0 rgba(255,255,255,.25);transition:transform .1s, filter .15s;}
+  .btn-primary:hover{filter:brightness(1.08);}
+  .btn-primary:active{transform:scale(.97);}
+
+  /* Urge tab */
+  .quick-grid{display:flex;flex-direction:column;gap:14px;}
+  .choice-row{display:flex;flex-wrap:wrap;gap:8px;}
+  .choice-btn{border:1px solid var(--line);background:var(--surface-2);color:var(--muted);border-radius:10px;padding:9px 14px;font-size:14px;}
+  .choice-btn.selected{background:var(--urge);color:var(--on-accent);border-color:transparent;font-weight:600;}
+  .intensity{display:flex;gap:6px;}
+  .int-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font-size:14px;}
+  .int-btn.selected{background:var(--danger);color:var(--on-accent);border-color:transparent;font-weight:700;}
+  .log-btn{background:var(--urge);color:var(--on-accent);border:none;border-radius:10px;padding:12px;font-size:15px;font-weight:600;}
+  .tip{color:var(--muted);font-size:13.5px;margin-top:10px;line-height:1.5;border-left:2px solid var(--urge);padding-left:12px;}
+
+  .urge-entry{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px;gap:10px;}
+  .urge-entry:last-child{border-bottom:none;}
+  .urge-meta{color:var(--muted);white-space:nowrap;}
+  .urge-entry-main{display:flex;align-items:center;gap:8px;flex:1;min-width:0;}
+  .del-x{background:none;border:none;color:var(--muted);font-size:16px;line-height:1;padding:2px 4px;flex-shrink:0;}
+  .del-x:hover{color:var(--danger);}
+  .stat-row{display:flex;gap:16px;margin-bottom:14px;}
+  .stat{background:var(--surface-2);border-radius:10px;padding:10px 14px;flex:1;text-align:center;}
+  .stat .num{font-family:'Fraunces',serif;font-size:24px;}
+  .stat .lbl{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;}
+
+  /* Actions */
+  .action-item{display:flex;align-items:flex-start;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);}
+  .action-item:last-child{border-bottom:none;}
+  .action-item input[type=checkbox]{margin-top:3px;width:16px;height:16px;accent-color:var(--business);}
+  .action-item.done .action-text{color:var(--muted);text-decoration:line-through;}
+  .action-text{font-size:14.5px;flex:1;}
+  .action-src{color:var(--muted);font-size:11.5px;margin-top:3px;}
+  .action-group{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px;}
+  .action-group-header{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .action-group-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .action-group-title{font-family:'Fraunces',serif;font-size:16px;}
+  .priority-select{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;color:var(--muted);font-size:11px;padding:3px 6px;margin-left:auto;}
+  .priority-select.high{color:var(--danger);border-color:var(--danger);}
+  .priority-select.medium{color:var(--business);border-color:var(--business);}
+  .priority-select.low{color:var(--muted);}
+  .add-action{display:flex;gap:8px;margin-top:14px;}
+  .add-action input{flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:9px 12px;font-family:inherit;font-size:14px;}
+  .empty{color:var(--muted);font-size:14px;text-align:center;padding:24px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div>
+      <div class="eyebrow">a private map, not a diagnosis</div>
+      <h1>The Map Room</h1>
+      <p>Drop the thought in. Watch it land somewhere on the map. Come back to it when you're ready to turn it into something you can actually do.</p>
+    </div>
+  </div>
+
+  <div id="storage-warning" style="display:none;background:var(--danger);color:var(--on-accent);border-radius:10px;padding:12px 16px;font-size:13.5px;margin-bottom:16px;">
+    Your browser isn't allowing this page to save anything right now (this can happen in private/incognito mode, or with strict browser settings). Nothing you enter will be kept after you close this tab unless you fix that.
+  </div>
+
+  <div style="display:flex;gap:16px;align-items:center;margin-bottom:6px;">
+    <button class="btn-ghost" id="export-btn" style="font-size:12.5px;padding:6px 12px;">⬇ Export backup</button>
+    <button class="btn-ghost" id="import-btn" style="font-size:12.5px;padding:6px 12px;">⬆ Import backup</button>
+    <input type="file" id="import-file-input" accept=".json" style="display:none;">
+    <span style="color:var(--muted);font-size:12px;" id="last-export-note"></span>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-panel="map">The Map</button>
+    <button class="tab" data-panel="urge">Urge Log</button>
+    <button class="tab" data-panel="energy">Energy</button>
+    <button class="tab" data-panel="today">Today</button>
+    <button class="tab" data-panel="wishlist">Wishlist</button>
+    <button class="tab" data-panel="actions">Action Plan</button>
+  </div>
+
+  <!-- MAP PANEL -->
+  <div class="panel active" id="panel-map">
+    <div class="card capture">
+      <textarea id="capture-text" placeholder="Whatever's loudest right now..."></textarea>
+      <div class="tag-row" id="tag-row">
+        <button class="tag-btn" data-tag="urge">Urge / craving</button>
+        <button class="tag-btn" data-tag="job">Job search</button>
+        <button class="tag-btn" data-tag="business">Business idea</button>
+        <button class="tag-btn" data-tag="self">Self-talk</button>
+        <button class="tag-btn" data-tag="sleep">Sleep</button>
+        <button class="tag-btn" data-tag="other">Something else</button>
+        <button class="tag-btn" id="add-tag-btn" style="border-style:dashed;">+ New tag</button>
+      </div>
+      <div id="new-tag-form" style="display:none;gap:8px;margin:0 0 12px;align-items:center;">
+        <input type="text" id="new-tag-name" placeholder="Name this tag (e.g. Health, Money)" style="flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font-family:inherit;font-size:13.5px;">
+        <button class="btn-primary" id="new-tag-save" style="padding:8px 14px;">Add</button>
+        <button class="btn-ghost" id="new-tag-cancel" style="padding:8px 14px;">Cancel</button>
+      </div>
+      <button class="save-btn" id="save-entry" disabled>Drop it on the map</button>
+    </div>
+    <div class="map-wrap">
+      <svg id="map-svg" viewBox="0 0 1100 460"></svg>
+      <div class="empty-map" id="map-empty">Nothing on the map yet. Drop a thought in above — it'll appear here.</div>
+    </div>
+  </div>
+
+  <!-- URGE PANEL -->
+  <div class="panel" id="panel-urge">
+    <div class="card">
+      <div class="stat-row">
+        <div class="stat"><div class="num" id="urge-week">0</div><div class="lbl">This week</div></div>
+        <div class="stat"><div class="num" id="urge-top">–</div><div class="lbl">Top trigger</div></div>
+        <div class="stat"><div class="num" id="urge-watched">0%</div><div class="lbl">While accountable</div></div>
+      </div>
+      <div class="quick-grid">
+        <div>
+          <div class="q-label" style="margin-top:0">What's driving it right now?</div>
+          <div class="choice-row" id="trigger-row">
+            <button class="choice-btn" data-val="Stress">Stress</button>
+            <button class="choice-btn" data-val="Impulse">Impulse</button>
+            <button class="choice-btn" data-val="Boredom">Boredom</button>
+            <button class="choice-btn" data-val="Other">Other</button>
+          </div>
+        </div>
+        <div>
+          <div class="q-label">Is anyone able to see what you do right now?</div>
+          <div class="choice-row" id="context-row">
+            <button class="choice-btn" data-val="Alone, no one watching">Alone, no one watching</button>
+            <button class="choice-btn" data-val="Someone could check in">Someone could check in</button>
+            <button class="choice-btn" data-val="With someone">With someone</button>
+          </div>
+        </div>
+        <div>
+          <div class="q-label">How strong is it? (1 = there, 5 = overwhelming)</div>
+          <div class="intensity" id="intensity-row">
+            <button class="int-btn" data-val="1">1</button>
+            <button class="int-btn" data-val="2">2</button>
+            <button class="int-btn" data-val="3">3</button>
+            <button class="int-btn" data-val="4">4</button>
+            <button class="int-btn" data-val="5">5</button>
+          </div>
+        </div>
+        <div>
+          <div class="q-label">If you haven't spent yet — how much are you tempted to spend right now?</div>
+          <input type="number" id="tempt-amount" placeholder="Amount ($)" min="0" step="0.01" style="width:160px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:9px 10px;font-family:inherit;font-size:14px;">
+          <div id="tempt-suggestion" style="display:none;margin-top:10px;background:var(--surface-2);border:1px solid var(--business);border-radius:10px;padding:12px 14px;"></div>
+        </div>
+        <div>
+          <div class="q-label">Did money go toward this?</div>
+          <div class="choice-row" id="spend-row">
+            <button class="choice-btn" data-val="no">No</button>
+            <button class="choice-btn" data-val="yes">Yes</button>
+          </div>
+          <input type="number" id="spend-amount" placeholder="Amount ($)" min="0" step="0.01" style="display:none;margin-top:8px;width:160px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:9px 10px;font-family:inherit;font-size:14px;">
+        </div>
+        <textarea id="urge-note" placeholder="Optional note — anything else happening right now?" style="min-height:44px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:10px;font-family:inherit;font-size:14px;"></textarea>
+        <button class="log-btn" id="log-urge">Log this moment</button>
+        <div class="tip" id="urge-tip"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="stat-row" style="margin-bottom:14px;">
+        <div class="stat"><div class="num" id="urge-spent-week">$0</div><div class="lbl">Spent this week</div></div>
+        <div class="stat"><div class="num" id="urge-spent-total">$0</div><div class="lbl">Total lost tracked</div></div>
+      </div>
+      <h3 style="font-size:16px;margin-bottom:10px;">Recent log</h3>
+      <div id="urge-list"><div class="empty">Nothing logged yet.</div></div>
+    </div>
+  </div>
+
+  <!-- ENERGY PANEL -->
+  <div class="panel" id="panel-energy">
+    <div class="card">
+      <h3 style="font-size:16px;margin-bottom:2px;">Today's check-in</h3>
+      <p style="color:var(--muted);font-size:13.5px;margin:4px 0 12px;">One number. No explanation required.</p>
+      <div class="intensity" id="energy-row">
+        <button class="int-btn" data-val="1">1</button>
+        <button class="int-btn" data-val="2">2</button>
+        <button class="int-btn" data-val="3">3</button>
+        <button class="int-btn" data-val="4">4</button>
+        <button class="int-btn" data-val="5">5</button>
+      </div>
+      <button class="log-btn" id="log-energy" style="margin-top:12px;background:var(--job);">Log today's energy</button>
+    </div>
+    <div class="card">
+      <h3 style="font-size:16px;margin-bottom:2px;">Tiny versions</h3>
+      <p style="color:var(--muted);font-size:13.5px;margin:4px 0 14px;">Not "go to the gym." A version so small there's no reason not to. Tap one when you actually do it — even the tiny version.</p>
+      <div class="choice-row" id="tiny-row">
+        <button class="choice-btn" data-val="Stood up and stretched for 60 seconds">Stretch, 60 sec</button>
+        <button class="choice-btn" data-val="Made or ate one real thing, not from a bag">One real meal item</button>
+        <button class="choice-btn" data-val="Stepped outside for 2 minutes">Outside, 2 min</button>
+        <button class="choice-btn" data-val="Read or watched one thing just out of curiosity">10 min of curiosity</button>
+        <button class="choice-btn" data-val="Sent one message to a friend">Texted a friend</button>
+      </div>
+      <div class="stat-row" style="margin-top:16px;">
+        <div class="stat"><div class="num" id="energy-wins-week">0</div><div class="lbl">Tiny wins this week</div></div>
+        <div class="stat"><div class="num" id="energy-avg">–</div><div class="lbl">Avg energy (7d)</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="font-size:16px;margin-bottom:10px;">Recent</h3>
+      <div id="energy-list"><div class="empty">Nothing logged yet.</div></div>
+    </div>
+  </div>
+
+  <!-- WISHLIST PANEL -->
+  <div class="panel" id="panel-wishlist">
+    <div class="card">
+      <h3 style="font-size:16px;margin-bottom:4px;">Things worth saving for</h3>
+      <p style="color:var(--muted);font-size:13.5px;margin:4px 0 14px;">What you'd actually spend on if the money went somewhere real. When you log a temptation amount in the Urge Log, this list gets checked for something close to that price.</p>
+      <div class="add-action" style="flex-wrap:wrap;">
+        <input type="text" id="new-wishlist-name" placeholder="Item — e.g. weekend trip, headphones..." style="min-width:200px;">
+        <input type="number" id="new-wishlist-price" placeholder="Price ($)" min="0" step="0.01" style="width:120px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:9px 10px;font-family:inherit;font-size:14px;">
+        <button class="btn-primary" id="add-wishlist-btn">Add</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="font-size:16px;margin-bottom:10px;">Your list</h3>
+      <div id="wishlist-list"></div>
+    </div>
+  </div>
+
+  <!-- TODAY PANEL -->
+  <div class="panel" id="panel-today">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;">
+        <h3 style="font-size:16px;" id="today-date-label">Today</h3>
+        <span style="color:var(--muted);font-size:12.5px;" id="today-progress">0 of 0 done</span>
+      </div>
+      <p style="color:var(--muted);font-size:13.5px;margin:4px 0 14px;">What would make today feel like it went well? Keep it short — a handful of things, not a wishlist.</p>
+      <div class="add-action">
+        <input type="text" id="new-today-item" placeholder="Something to get done today...">
+        <button class="btn-primary" id="add-today-btn">Add</button>
+      </div>
+      <div id="today-list" style="margin-top:12px;"></div>
+    </div>
+  </div>
+
+  <!-- ACTIONS PANEL -->
+  <div class="panel" id="panel-actions">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <h3 style="font-size:16px;" id="level-title">Level 1 · Just starting</h3>
+        <span style="color:var(--muted);font-size:12.5px;" id="streak-display">0 day streak</span>
+      </div>
+      <div style="background:var(--surface-2);border-radius:8px;height:8px;overflow:hidden;margin:10px 0 6px;">
+        <div id="level-bar" style="height:100%;width:0%;background:var(--business);transition:width .3s;"></div>
+      </div>
+      <p style="color:var(--muted);font-size:12px;margin:0 0 12px;" id="level-sub"></p>
+      <div class="stat-row">
+        <div class="stat"><div class="num" id="points-week">0</div><div class="lbl">Points this week</div></div>
+        <div class="stat"><div class="num" id="points-best">0</div><div class="lbl">Best week ever</div></div>
+        <div class="stat"><div class="num" id="points-total">0</div><div class="lbl">Total points</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:16px;margin-bottom:4px;">Add a step</h3>
+      <div class="add-action" style="flex-wrap:wrap;">
+        <input type="text" id="new-action" placeholder="Add a step directly..." style="min-width:180px;">
+        <select id="new-action-tag" style="background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:9px 10px;font-family:inherit;font-size:14px;"></select>
+        <select id="new-action-priority" style="background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:9px 10px;font-family:inherit;font-size:14px;">
+          <option value="high">High priority</option>
+          <option value="medium" selected>Medium priority</option>
+          <option value="low">Low priority</option>
+        </select>
+        <button class="btn-primary" id="add-action-btn">Add</button>
+      </div>
+    </div>
+
+    <div id="action-groups"></div>
+  </div>
+</div>
+
+<!-- REFLECTION MODAL -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <h3>Let's sit with this one</h3>
+    <div class="q-label" style="margin-top:0;">The thought (edit if it's changed or you mistyped it)</div>
+    <textarea id="modal-edit-text" style="min-height:56px;"></textarea>
+    <div style="display:flex;gap:8px;margin-top:8px;align-items:center;">
+      <select id="modal-edit-tag" style="flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font-family:inherit;font-size:13.5px;"></select>
+      <button class="btn-ghost" id="modal-update-btn" style="padding:8px 14px;white-space:nowrap;">Update</button>
+    </div>
+    <span id="modal-update-confirm" style="display:none;color:var(--job);font-size:12px;margin-top:4px;">Updated ✓</span>
+    <div id="modal-questions"></div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="modal-delete" style="border-color:var(--danger);color:var(--danger);margin-right:auto;">Delete this thought</button>
+      <button class="btn-ghost" id="modal-cancel">Not now</button>
+      <button class="btn-primary" id="modal-save">Save to action plan</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const BASE_TAGS = {
+  urge:{label:'Urge / craving', color:getVar('--urge'), anchor:[550,75]},
+  job:{label:'Job search', color:getVar('--job'), anchor:[911,186]},
+  business:{label:'Business idea', color:getVar('--business'), anchor:[773,364]},
+  self:{label:'Self-talk', color:getVar('--self'), anchor:[327,364]},
+  sleep:{label:'Sleep', color:getVar('--sleep'), anchor:[189,186]},
+  other:{label:'Something else', color:getVar('--other'), anchor:[550,235]}
+};
+const CUSTOM_PALETTE = ['#A8577A','#3C7FA6','#96793A','#4C8F63','#B15A3A','#6B5FA8'];
+let customTags = [];
+let TAG_META = {...BASE_TAGS};
+function rebuildTagMeta(){
+  TAG_META = {...BASE_TAGS};
+  const n = customTags.length;
+  customTags.forEach((t, i)=>{
+    const angle = (Math.PI*2 * i / Math.max(n,1)) - Math.PI/2;
+    const radius = 95;
+    const x = 550 + Math.cos(angle)*radius;
+    const y = 235 + Math.sin(angle)*radius*0.75;
+    TAG_META[t.id] = { label: t.label, color: t.color, anchor:[x,y] };
+  });
+}
+function getVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+let entries = [];
+let urges = [];
+let actions = [];
+let energyLogs = [];
+let dailyPlan = [];
+let wishlist = [];
+let activeEnergyLevel = null;
+let selectedTag = null;
+let activeTrigger = null, activeContext = null, activeIntensity = null, activeSpent = null;
+let modalEntryId = null;
+
+const URGE_TIPS = [
+  "Urges rise and fall like a wave — most peak and pass within about 20 minutes, whether or not you act on them.",
+  "You don't have to win the argument with the urge. You just have to outlast this one wave.",
+  "Naming it as 'stress' or 'boredom' instead of 'weakness' is already doing something — it turns a verdict into a fact you can work with.",
+  "If someone could check in on you right now, that's real leverage. Worth using on purpose, not just by accident."
+];
+
+const LS_PREFIX = 'maproom_';
+function lsGet(key){
+  try{ const v = localStorage.getItem(LS_PREFIX+key); return v ? JSON.parse(v) : null; }
+  catch(e){ return null; }
+}
+function lsSet(key, value){
+  try{ localStorage.setItem(LS_PREFIX+key, JSON.stringify(value)); return true; }
+  catch(e){ return false; }
+}
+function storageIsAvailable(){
+  try{ const k='__mr_test__'; localStorage.setItem(k,'1'); localStorage.removeItem(k); return true; }
+  catch(e){ return false; }
+}
+
+async function loadAll(){
+  if(!storageIsAvailable()){
+    document.getElementById('storage-warning').style.display = 'block';
+  }
+  entries = lsGet('map_entries') || [];
+  urges = lsGet('urge_logs') || [];
+  actions = lsGet('action_items') || [];
+  energyLogs = lsGet('energy_logs') || [];
+  dailyPlan = lsGet('daily_plan') || [];
+  wishlist = lsGet('wishlist') || [];
+  customTags = lsGet('custom_tags') || [];
+  rebuildTagMeta();
+  const migrated = migrateActionData();
+  if(migrated) await saveActions();
+  renderCustomTagButtons();
+  populateActionTagSelect();
+  renderMap(); renderUrges(); renderActions(); renderEnergy(); renderDailyPlan(); renderWishlist();
+}
+function migrateActionData(){
+  let changed = false;
+  actions.forEach(a=>{
+    if(!a.tag){
+      let inferred = 'other';
+      if(a.src){
+        const match = entries.find(e => e.text.slice(0,60) === a.src);
+        if(match) inferred = match.tag;
+      }
+      a.tag = inferred;
+      changed = true;
+    }
+    if(!a.priority){ a.priority = 'medium'; changed = true; }
+    if(a.completedTs === undefined){ a.completedTs = (a.done ? a.ts : null); changed = true; }
+  });
+  return changed;
+}
+async function saveEntries(){ lsSet('map_entries', entries); }
+async function saveUrges(){ lsSet('urge_logs', urges); }
+async function saveActions(){ lsSet('action_items', actions); }
+async function saveEnergy(){ lsSet('energy_logs', energyLogs); }
+async function saveDailyPlan(){ lsSet('daily_plan', dailyPlan); }
+async function saveWishlist(){ lsSet('wishlist', wishlist); }
+async function saveCustomTags(){ lsSet('custom_tags', customTags); }
+
+// Tabs
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click', ()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('panel-'+t.dataset.panel).classList.add('active');
+  });
+});
+
+// Capture — tag selection via delegation so dynamically added tags work too
+document.getElementById('tag-row').addEventListener('click', (e)=>{
+  const b = e.target.closest('.tag-btn');
+  if(!b || b.id === 'add-tag-btn') return;
+  document.querySelectorAll('#tag-row .tag-btn[data-tag]').forEach(x=>x.classList.remove('selected'));
+  b.classList.add('selected');
+  selectedTag = b.dataset.tag;
+  checkSaveEnabled();
+});
+function renderCustomTagButtons(){
+  document.querySelectorAll('#tag-row .tag-btn.custom-tag').forEach(el=>el.remove());
+  const addBtn = document.getElementById('add-tag-btn');
+  customTags.forEach(t=>{
+    const btn = document.createElement('button');
+    btn.className = 'tag-btn custom-tag';
+    btn.dataset.tag = t.id;
+    btn.textContent = t.label;
+    btn.style.setProperty('--custom-color', t.color);
+    addBtn.parentNode.insertBefore(btn, addBtn);
+  });
+  // custom tag selected-state color (inline, since not in stylesheet)
+  const style = document.getElementById('custom-tag-style') || document.createElement('style');
+  style.id = 'custom-tag-style';
+  style.textContent = customTags.map(t=>`.tag-btn.custom-tag[data-tag="${t.id}"].selected{background:${t.color};border-color:transparent;color:var(--on-accent);font-weight:600;}`).join('\n');
+  document.head.appendChild(style);
+}
+document.getElementById('add-tag-btn').addEventListener('click', ()=>{
+  document.getElementById('new-tag-form').style.display = 'flex';
+  document.getElementById('new-tag-name').focus();
+});
+document.getElementById('new-tag-cancel').addEventListener('click', ()=>{
+  document.getElementById('new-tag-form').style.display = 'none';
+  document.getElementById('new-tag-name').value = '';
+});
+document.getElementById('new-tag-save').addEventListener('click', async ()=>{
+  const name = document.getElementById('new-tag-name').value.trim();
+  if(!name) return;
+  const id = 'custom_' + name.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,24) + '_' + Date.now().toString(36);
+  const color = CUSTOM_PALETTE[customTags.length % CUSTOM_PALETTE.length];
+  customTags.push({ id, label: name, color });
+  await saveCustomTags();
+  rebuildTagMeta();
+  renderCustomTagButtons();
+  populateActionTagSelect();
+  renderMap();
+  renderActions();
+  document.getElementById('new-tag-name').value = '';
+  document.getElementById('new-tag-form').style.display = 'none';
+});
+document.getElementById('capture-text').addEventListener('input', checkSaveEnabled);
+function checkSaveEnabled(){
+  const txt = document.getElementById('capture-text').value.trim();
+  document.getElementById('save-entry').disabled = !(txt && selectedTag);
+}
+document.getElementById('save-entry').addEventListener('click', async ()=>{
+  const txt = document.getElementById('capture-text').value.trim();
+  if(!txt || !selectedTag) return;
+  entries.push({ id: 'e'+Date.now(), text: txt, tag: selectedTag, ts: Date.now(), reflected: false,
+    seed: Math.random() });
+  document.getElementById('capture-text').value = '';
+  document.querySelectorAll('#tag-row .tag-btn[data-tag]').forEach(x=>x.classList.remove('selected'));
+  selectedTag = null;
+  checkSaveEnabled();
+  await saveEntries();
+  renderMap();
+});
+
+function renderMap(){
+  const svg = document.getElementById('map-svg');
+  const empty = document.getElementById('map-empty');
+  svg.innerHTML = '';
+  if(entries.length === 0){ empty.style.display='block'; return; }
+  empty.style.display='none';
+
+  Object.entries(TAG_META).forEach(([tag,meta])=>{
+    const [ax,ay] = meta.anchor;
+    const label = document.createElementNS('http://www.w3.org/2000/svg','text');
+    label.setAttribute('x', ax); label.setAttribute('y', ay - 46);
+    label.setAttribute('text-anchor','middle');
+    label.setAttribute('class','zone-label');
+    label.textContent = meta.label;
+    svg.appendChild(label);
+  });
+
+  entries.forEach(entry=>{
+    const meta = TAG_META[entry.tag] || TAG_META.other;
+    const [ax,ay] = meta.anchor;
+    const angle = entry.seed * Math.PI * 2;
+    const dist = 20 + (entry.seed * 60);
+    const x = ax + Math.cos(angle)*dist;
+    const y = ay + Math.sin(angle)*dist;
+
+    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+    line.setAttribute('x1',ax); line.setAttribute('y1',ay);
+    line.setAttribute('x2',x); line.setAttribute('y2',y);
+    line.setAttribute('stroke', meta.color); line.setAttribute('stroke-opacity','0.25');
+    svg.appendChild(line);
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.setAttribute('class','node');
+    g.addEventListener('click', ()=> openModal(entry.id));
+    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('cx',x); circle.setAttribute('cy',y); circle.setAttribute('r', entry.reflected ? 6 : 9);
+    circle.setAttribute('fill', meta.color);
+    circle.setAttribute('opacity', entry.reflected ? 0.55 : 1);
+    g.appendChild(circle);
+    svg.appendChild(g);
+
+    const title = document.createElementNS('http://www.w3.org/2000/svg','title');
+    title.textContent = entry.text;
+    g.appendChild(title);
+  });
+}
+
+const QUESTION_SETS = {
+  urge: [
+    "What's this actually about right now — stress, boredom, loneliness, or something else?",
+    "If you let this wave pass without acting on it, what does an hour from now look like? What does a week from now look like?",
+    "Is anyone able to see what you do in the next 10 minutes? If not, who could you tell right now that you're having this thought?",
+    "What's one thing you could do in the next 5 minutes that takes less effort than acting on the urge?"
+  ],
+  self: [
+    "If a friend told you they were thinking this exact thing about themselves, what would you say back to them?",
+    "What's the actual evidence for this thought — and what's the evidence against it?",
+    "Is this thought about something you did, or about who you are? Those aren't the same thing.",
+    "What's one small step that treats yourself the way you'd treat that friend?"
+  ],
+  job: [
+    "What's the real decision here, in one sentence?",
+    "What's pulling you toward this — the work itself, or something you're trying to get away from?",
+    "What's the actual worst case if you tried this and it didn't work — and could you survive it?",
+    "What's one small, reversible step you could take this week to get real information, without committing to anything big?"
+  ],
+  business: [
+    "What's the real decision here, in one sentence?",
+    "Is the pull toward this idea about the idea itself, or about wanting out of something else (the job, the boredom, the self-doubt)?",
+    "Who would actually pay for this, and have you asked one of them yet?",
+    "What's the smallest, cheapest test you could run this month before committing anything serious?"
+  ],
+  sleep: [
+    "What time did you actually get into bed, and what time did you actually fall asleep — were those the same?",
+    "What were you doing in the hour before you tried to sleep?",
+    "Is what's keeping you up a specific thought worth writing down, or more just restlessness and screen time?",
+    "What's one thing you could change about tonight specifically — not your whole sleep routine, just tonight?"
+  ],
+  default: [
+    "What need might this be meeting right now — relief, control, connection, escape, something else?",
+    "What's one small, concrete step you could take on this — small enough you'd actually do it?"
+  ]
+};
+
+function renderModalQuestions(tag){
+  const qset = QUESTION_SETS[tag] || QUESTION_SETS.default;
+  const container = document.getElementById('modal-questions');
+  container.innerHTML = qset.map((q,i)=>`
+    <div class="q-label" style="${i===0?'margin-top:14px;':''}">${q}</div>
+    <textarea id="modal-q-${i}"></textarea>`).join('');
+}
+function populateModalTagSelect(current){
+  const sel = document.getElementById('modal-edit-tag');
+  sel.innerHTML = Object.entries(TAG_META).map(([id,m])=>`<option value="${id}">${escapeHtml(m.label)}</option>`).join('');
+  if(current && TAG_META[current]) sel.value = current;
+}
+function openModal(id){
+  modalEntryId = id;
+  const entry = entries.find(e=>e.id===id);
+  if(!entry) return;
+  document.getElementById('modal-edit-text').value = entry.text;
+  populateModalTagSelect(entry.tag);
+  document.getElementById('modal-update-confirm').style.display = 'none';
+  renderModalQuestions(entry.tag);
+  document.getElementById('modal-bg').classList.add('open');
+}
+document.getElementById('modal-edit-tag').addEventListener('change', (e)=>{
+  renderModalQuestions(e.target.value);
+});
+function commitModalEdits(){
+  const entry = entries.find(e=>e.id===modalEntryId);
+  if(!entry) return null;
+  const newText = document.getElementById('modal-edit-text').value.trim();
+  if(newText) entry.text = newText;
+  entry.tag = document.getElementById('modal-edit-tag').value;
+  return entry;
+}
+document.getElementById('modal-update-btn').addEventListener('click', async ()=>{
+  const entry = commitModalEdits();
+  if(!entry) return;
+  await saveEntries();
+  renderMap();
+  const confirm = document.getElementById('modal-update-confirm');
+  confirm.style.display = 'inline';
+  setTimeout(()=>{ confirm.style.display = 'none'; }, 2000);
+});
+document.getElementById('modal-cancel').addEventListener('click', ()=>{
+  document.getElementById('modal-bg').classList.remove('open');
+});
+document.getElementById('modal-delete').addEventListener('click', async ()=>{
+  entries = entries.filter(e=>e.id !== modalEntryId);
+  await saveEntries();
+  renderMap();
+  document.getElementById('modal-bg').classList.remove('open');
+});
+document.getElementById('modal-save').addEventListener('click', async ()=>{
+  const entry = commitModalEdits();
+  const qset = QUESTION_SETS[(entry && entry.tag)] || QUESTION_SETS.default;
+  const lastIdx = qset.length - 1;
+  const lastField = document.getElementById('modal-q-'+lastIdx);
+  const step = lastField ? lastField.value.trim() : '';
+  if(entry){ entry.reflected = true; }
+  if(step){
+    actions.push({ id:'a'+Date.now(), text: step, src: entry ? entry.text.slice(0,60) : '', tag: entry ? entry.tag : 'other', priority: 'medium', done:false, completedTs:null, ts:Date.now() });
+    await saveActions();
+    renderActions();
+  }
+  await saveEntries();
+  renderMap();
+  document.getElementById('modal-bg').classList.remove('open');
+});
+
+// Urge log
+document.getElementById('trigger-row').addEventListener('click', e=>{
+  if(!e.target.classList.contains('choice-btn')) return;
+  document.querySelectorAll('#trigger-row .choice-btn').forEach(b=>b.classList.remove('selected'));
+  e.target.classList.add('selected'); activeTrigger = e.target.dataset.val;
+});
+document.getElementById('context-row').addEventListener('click', e=>{
+  if(!e.target.classList.contains('choice-btn')) return;
+  document.querySelectorAll('#context-row .choice-btn').forEach(b=>b.classList.remove('selected'));
+  e.target.classList.add('selected'); activeContext = e.target.dataset.val;
+});
+document.getElementById('intensity-row').addEventListener('click', e=>{
+  if(!e.target.classList.contains('int-btn')) return;
+  document.querySelectorAll('#intensity-row .int-btn').forEach(b=>b.classList.remove('selected'));
+  e.target.classList.add('selected'); activeIntensity = e.target.dataset.val;
+});
+document.getElementById('spend-row').addEventListener('click', e=>{
+  if(!e.target.classList.contains('choice-btn')) return;
+  document.querySelectorAll('#spend-row .choice-btn').forEach(b=>b.classList.remove('selected'));
+  e.target.classList.add('selected'); activeSpent = e.target.dataset.val;
+  document.getElementById('spend-amount').style.display = activeSpent === 'yes' ? 'block' : 'none';
+  if(activeSpent !== 'yes'){ document.getElementById('spend-amount').value = ''; }
+});
+document.getElementById('log-urge').addEventListener('click', async ()=>{
+  const note = document.getElementById('urge-note').value.trim();
+  const spent = activeSpent === 'yes';
+  const amountRaw = document.getElementById('spend-amount').value;
+  const amount = spent && amountRaw ? Math.max(0, parseFloat(amountRaw)) : 0;
+  const temptRaw = document.getElementById('tempt-amount').value;
+  const temptedAmount = temptRaw ? Math.max(0, parseFloat(temptRaw)) : 0;
+  urges.push({ id:'u'+Date.now(), trigger: activeTrigger||'Not specified', context: activeContext||'Not specified',
+    intensity: activeIntensity||'-', note, spent, amount, temptedAmount, ts: Date.now() });
+  document.getElementById('urge-note').value='';
+  document.getElementById('spend-amount').value='';
+  document.getElementById('spend-amount').style.display='none';
+  document.getElementById('tempt-amount').value='';
+  document.getElementById('tempt-suggestion').style.display='none';
+  document.getElementById('tempt-suggestion').innerHTML='';
+  document.querySelectorAll('#trigger-row .choice-btn, #context-row .choice-btn, #intensity-row .int-btn, #spend-row .choice-btn').forEach(b=>b.classList.remove('selected'));
+  activeTrigger=null; activeContext=null; activeIntensity=null; activeSpent=null;
+  document.getElementById('urge-tip').textContent = URGE_TIPS[Math.floor(Math.random()*URGE_TIPS.length)];
+  await saveUrges();
+  renderUrges();
+});
+
+function renderUrges(){
+  const list = document.getElementById('urge-list');
+  if(urges.length === 0){ list.innerHTML = '<div class="empty">Nothing logged yet.</div>'; }
+  else{
+    const recent = [...urges].sort((a,b)=>b.ts-a.ts).slice(0,15);
+    list.innerHTML = recent.map(u=>{
+      const d = new Date(u.ts);
+      const spendTxt = u.spent ? ` · <span style="color:var(--danger);">$${Number(u.amount||0).toFixed(2)}</span>` : '';
+      const temptTxt = (!u.spent && u.temptedAmount) ? ` · <span style="color:var(--business);">resisted ~$${Number(u.temptedAmount).toFixed(2)}</span>` : '';
+      return `<div class="urge-entry" data-id="${u.id}"><span class="urge-entry-main">${u.trigger} · ${u.context}${spendTxt}${temptTxt}${u.note ? ' — '+escapeHtml(u.note) : ''}</span><span class="urge-meta">${d.toLocaleDateString()} · lvl ${u.intensity}</span><button class="del-x" title="Delete">✕</button></div>`;
+    }).join('');
+    list.querySelectorAll('.del-x').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = btn.closest('.urge-entry').dataset.id;
+        urges = urges.filter(u=>u.id !== id);
+        await saveUrges();
+        renderUrges();
+      });
+    });
+  }
+  const weekAgo = Date.now() - 7*24*60*60*1000;
+  const thisWeek = urges.filter(u=>u.ts >= weekAgo);
+  document.getElementById('urge-week').textContent = thisWeek.length;
+  const counts = {};
+  urges.forEach(u=>{ counts[u.trigger] = (counts[u.trigger]||0)+1; });
+  const top = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+  document.getElementById('urge-top').textContent = top ? top[0] : '–';
+  const watchedCount = urges.filter(u=>u.context !== 'Alone, no one watching').length;
+  document.getElementById('urge-watched').textContent = urges.length ? Math.round(100*watchedCount/urges.length)+'%' : '0%';
+  const spentWeek = thisWeek.reduce((s,u)=> s + (u.spent ? Number(u.amount||0) : 0), 0);
+  const spentTotal = urges.reduce((s,u)=> s + (u.spent ? Number(u.amount||0) : 0), 0);
+  document.getElementById('urge-spent-week').textContent = '$' + spentWeek.toFixed(2);
+  document.getElementById('urge-spent-total').textContent = '$' + spentTotal.toFixed(2);
+}
+function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+// Energy
+document.getElementById('energy-row').addEventListener('click', e=>{
+  if(!e.target.classList.contains('int-btn')) return;
+  document.querySelectorAll('#energy-row .int-btn').forEach(b=>b.classList.remove('selected'));
+  e.target.classList.add('selected'); activeEnergyLevel = e.target.dataset.val;
+});
+document.getElementById('log-energy').addEventListener('click', async ()=>{
+  if(!activeEnergyLevel) return;
+  energyLogs.push({ id:'en'+Date.now(), type:'checkin', level: activeEnergyLevel, ts: Date.now() });
+  document.querySelectorAll('#energy-row .int-btn').forEach(b=>b.classList.remove('selected'));
+  activeEnergyLevel = null;
+  await saveEnergy();
+  renderEnergy();
+  renderActions();
+});
+document.getElementById('tiny-row').addEventListener('click', async e=>{
+  if(!e.target.classList.contains('choice-btn')) return;
+  energyLogs.push({ id:'en'+Date.now(), type:'win', label: e.target.dataset.val, ts: Date.now() });
+  await saveEnergy();
+  renderEnergy();
+  renderActions();
+});
+function renderEnergy(){
+  const weekAgo = Date.now() - 7*24*60*60*1000;
+  const wins = energyLogs.filter(l=>l.type==='win');
+  const winsWeek = wins.filter(l=>l.ts>=weekAgo);
+  document.getElementById('energy-wins-week').textContent = winsWeek.length;
+  const checkins = energyLogs.filter(l=>l.type==='checkin' && l.ts>=weekAgo);
+  const avg = checkins.length ? (checkins.reduce((s,l)=>s+Number(l.level),0)/checkins.length).toFixed(1) : '–';
+  document.getElementById('energy-avg').textContent = avg;
+
+  const list = document.getElementById('energy-list');
+  const recent = [...energyLogs].sort((a,b)=>b.ts-a.ts).slice(0,15);
+  if(recent.length === 0){ list.innerHTML = '<div class="empty">Nothing logged yet.</div>'; return; }
+  list.innerHTML = recent.map(l=>{
+    const d = new Date(l.ts);
+    const txt = l.type==='checkin' ? `Energy check-in: ${l.level}/5` : l.label;
+    return `<div class="urge-entry" data-id="${l.id}"><span class="urge-entry-main">${escapeHtml(txt)}</span><span class="urge-meta">${d.toLocaleDateString()}</span><button class="del-x" title="Delete">✕</button></div>`;
+  }).join('');
+  list.querySelectorAll('.del-x').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.closest('.urge-entry').dataset.id;
+      energyLogs = energyLogs.filter(l=>l.id !== id);
+      await saveEnergy();
+      renderEnergy();
+      renderActions();
+    });
+  });
+}
+
+// Wishlist
+document.getElementById('add-wishlist-btn').addEventListener('click', async ()=>{
+  const nameInput = document.getElementById('new-wishlist-name');
+  const priceInput = document.getElementById('new-wishlist-price');
+  const name = nameInput.value.trim();
+  const price = parseFloat(priceInput.value);
+  if(!name || isNaN(price) || price < 0) return;
+  wishlist.push({ id:'w'+Date.now(), name, price, ts: Date.now() });
+  nameInput.value=''; priceInput.value='';
+  await saveWishlist();
+  renderWishlist();
+});
+function renderWishlist(){
+  const list = document.getElementById('wishlist-list');
+  if(wishlist.length === 0){ list.innerHTML = '<div class="empty">Nothing here yet — add something you actually want.</div>'; return; }
+  const sorted = [...wishlist].sort((a,b)=> a.price - b.price);
+  list.innerHTML = sorted.map(w=>`
+    <div class="urge-entry" data-id="${w.id}">
+      <span class="urge-entry-main">${escapeHtml(w.name)}</span>
+      <span class="urge-meta">$${Number(w.price).toFixed(2)}</span>
+      <button class="del-x" title="Delete">✕</button>
+    </div>`).join('');
+  list.querySelectorAll('.del-x').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.closest('.urge-entry').dataset.id;
+      wishlist = wishlist.filter(w=>w.id !== id);
+      await saveWishlist();
+      renderWishlist();
+    });
+  });
+}
+function showTemptSuggestion(amount){
+  const box = document.getElementById('tempt-suggestion');
+  if(!amount || amount <= 0){ box.style.display = 'none'; box.innerHTML=''; return; }
+  if(wishlist.length === 0){
+    box.style.display = 'block';
+    box.innerHTML = `<span style="color:var(--muted);font-size:13.5px;">No wishlist items yet — add something to the Wishlist tab so this can show you what that $${amount.toFixed(2)} could actually become.</span>`;
+    return;
+  }
+  const ranked = [...wishlist].sort((a,b)=> Math.abs(a.price-amount) - Math.abs(b.price-amount));
+  const matches = ranked.slice(0,2);
+  box.style.display = 'block';
+  box.innerHTML = `<div style="color:var(--business);font-weight:600;font-size:13.5px;margin-bottom:6px;">Instead, that's close to:</div>` +
+    matches.map(m=>`<div style="font-size:14px;margin-bottom:2px;">${escapeHtml(m.name)} — <span style="color:var(--muted);">$${Number(m.price).toFixed(2)}</span></div>`).join('');
+}
+document.getElementById('tempt-amount').addEventListener('input', (e)=>{
+  const val = parseFloat(e.target.value);
+  showTemptSuggestion(isNaN(val) ? 0 : val);
+});
+
+// Today (daily plan)
+function todayKey(){
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+document.getElementById('add-today-btn').addEventListener('click', async ()=>{
+  const input = document.getElementById('new-today-item');
+  const val = input.value.trim();
+  if(!val) return;
+  dailyPlan.push({ id:'d'+Date.now(), text: val, date: todayKey(), done:false, completedTs:null, ts:Date.now() });
+  input.value = '';
+  await saveDailyPlan();
+  renderDailyPlan();
+});
+document.getElementById('new-today-item').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') document.getElementById('add-today-btn').click();
+});
+function renderDailyPlan(){
+  const key = todayKey();
+  document.getElementById('today-date-label').textContent = new Date().toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
+  const items = dailyPlan.filter(d=>d.date===key);
+  const doneCount = items.filter(d=>d.done).length;
+  document.getElementById('today-progress').textContent = `${doneCount} of ${items.length} done`;
+
+  const list = document.getElementById('today-list');
+  if(items.length === 0){ list.innerHTML = '<div class="empty">Nothing planned yet for today — add a few things above.</div>'; return; }
+  const sorted = [...items].sort((a,b)=> (a.done - b.done) || (a.ts - b.ts));
+  list.innerHTML = sorted.map(d=>`
+    <div class="action-item ${d.done?'done':''}" data-id="${d.id}">
+      <input type="checkbox" ${d.done?'checked':''}>
+      <div style="flex:1;"><div class="action-text">${escapeHtml(d.text)}</div></div>
+      <button class="del-x" title="Delete">✕</button>
+    </div>`).join('');
+  list.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change', async ()=>{
+      const id = cb.closest('.action-item').dataset.id;
+      const item = dailyPlan.find(x=>x.id===id);
+      if(item){
+        item.done = cb.checked;
+        item.completedTs = cb.checked ? Date.now() : null;
+        await saveDailyPlan(); renderDailyPlan(); renderActions();
+      }
+    });
+  });
+  list.querySelectorAll('.del-x').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.closest('.action-item').dataset.id;
+      dailyPlan = dailyPlan.filter(x=>x.id !== id);
+      await saveDailyPlan();
+      renderDailyPlan();
+      renderActions();
+    });
+  });
+}
+
+// Actions
+const PRIORITY_POINTS = { high: 3, medium: 2, low: 1 };
+const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
+const LEVELS = [
+  {min:0, title:'Just starting'},
+  {min:10, title:'Building momentum'},
+  {min:30, title:'In control'},
+  {min:60, title:'Steady hand'},
+  {min:100, title:'Sharp and consistent'},
+  {min:150, title:'Master of the map'}
+];
+function weekKey(ts){ return Math.floor(ts / (7*24*60*60*1000)); }
+
+function populateActionTagSelect(){
+  const sel = document.getElementById('new-action-tag');
+  const current = sel.value;
+  sel.innerHTML = Object.entries(TAG_META).map(([id,m])=>`<option value="${id}">${escapeHtml(m.label)}</option>`).join('');
+  if(current && TAG_META[current]) sel.value = current;
+}
+
+function renderActions(){
+  const container = document.getElementById('action-groups');
+
+  // --- Progress stats (actions + energy tab activity + daily plan) ---
+  const doneItems = actions.filter(a=>a.done && a.completedTs);
+  const doneDailyItems = dailyPlan.filter(d=>d.done && d.completedTs);
+  const actionPoints = doneItems.reduce((s,a)=> s + (PRIORITY_POINTS[a.priority]||1), 0);
+  const energyPoints = energyLogs.reduce((s,l)=> s + (l.type==='win' ? 2 : 1), 0);
+  const dailyPoints = doneDailyItems.length * 1;
+  const totalPoints = actionPoints + energyPoints + dailyPoints;
+
+  const currentWeek = weekKey(Date.now());
+  const weekTotals = {};
+  doneItems.forEach(a=>{ const wk = weekKey(a.completedTs); weekTotals[wk] = (weekTotals[wk]||0) + (PRIORITY_POINTS[a.priority]||1); });
+  energyLogs.forEach(l=>{ const wk = weekKey(l.ts); weekTotals[wk] = (weekTotals[wk]||0) + (l.type==='win' ? 2 : 1); });
+  doneDailyItems.forEach(d=>{ const wk = weekKey(d.completedTs); weekTotals[wk] = (weekTotals[wk]||0) + 1; });
+  const pointsThisWeek = weekTotals[currentWeek] || 0;
+  const bestWeek = Object.values(weekTotals).reduce((m,v)=>Math.max(m,v), 0);
+  document.getElementById('points-week').textContent = pointsThisWeek;
+  document.getElementById('points-best').textContent = bestWeek;
+  document.getElementById('points-total').textContent = totalPoints;
+
+  let levelIdx = 0;
+  for(let i=0;i<LEVELS.length;i++){ if(totalPoints >= LEVELS[i].min) levelIdx = i; }
+  const level = LEVELS[levelIdx];
+  const next = LEVELS[levelIdx+1];
+  document.getElementById('level-title').textContent = `Level ${levelIdx+1} · ${level.title}`;
+  if(next){
+    const pct = Math.min(100, Math.round(100*(totalPoints-level.min)/(next.min-level.min)));
+    document.getElementById('level-bar').style.width = pct+'%';
+    document.getElementById('level-sub').textContent = `${next.min-totalPoints} points to "${next.title}"`;
+  } else {
+    document.getElementById('level-bar').style.width = '100%';
+    document.getElementById('level-sub').textContent = 'Top level reached — still counting.';
+  }
+
+  // streak: consecutive days (including today) with at least one completed action, energy activity, or daily plan win
+  const doneDates = new Set(doneItems.map(a=> new Date(a.completedTs).toDateString()));
+  energyLogs.forEach(l=> doneDates.add(new Date(l.ts).toDateString()));
+  doneDailyItems.forEach(d=> doneDates.add(new Date(d.completedTs).toDateString()));
+  let streak = 0;
+  let cursor = new Date();
+  while(doneDates.has(cursor.toDateString())){ streak++; cursor.setDate(cursor.getDate()-1); }
+  document.getElementById('streak-display').textContent = streak + (streak===1?' day streak':' day streak');
+
+  // --- Grouped, priority-sorted lists ---
+  if(actions.length === 0){
+    container.innerHTML = '<div class="card"><div class="empty">No steps yet — they show up here from the map, or add one above.</div></div>';
+    return;
+  }
+  const byTag = {};
+  actions.forEach(a=>{
+    const tag = a.tag && TAG_META[a.tag] ? a.tag : 'other';
+    if(!byTag[tag]) byTag[tag] = [];
+    byTag[tag].push(a);
+  });
+  const tagOrder = Object.keys(TAG_META).filter(t=>byTag[t] && byTag[t].length);
+  container.innerHTML = tagOrder.map(tag=>{
+    const meta = TAG_META[tag];
+    const items = [...byTag[tag]].sort((a,b)=> (a.done - b.done) || (PRIORITY_ORDER[a.priority||'medium'] - PRIORITY_ORDER[b.priority||'medium']) || (b.ts - a.ts));
+    return `<div class="action-group">
+      <div class="action-group-header"><span class="action-group-dot" style="background:${meta.color};"></span><span class="action-group-title">${escapeHtml(meta.label)}</span></div>
+      ${items.map(a=>`
+        <div class="action-item ${a.done?'done':''}" data-id="${a.id}">
+          <input type="checkbox" ${a.done?'checked':''}>
+          <div style="flex:1;">
+            <div class="action-text">${escapeHtml(a.text)}</div>
+            ${a.src ? `<div class="action-src">from: "${escapeHtml(a.src)}${a.src.length>=60?'…':''}"</div>` : ''}
+          </div>
+          <select class="priority-select ${a.priority||'medium'}" data-id="${a.id}">
+            <option value="high" ${a.priority==='high'?'selected':''}>High</option>
+            <option value="medium" ${(!a.priority||a.priority==='medium')?'selected':''}>Medium</option>
+            <option value="low" ${a.priority==='low'?'selected':''}>Low</option>
+          </select>
+          <button class="del-x" title="Delete">✕</button>
+        </div>`).join('')}
+    </div>`;
+  }).join('');
+
+  container.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+    cb.addEventListener('change', async ()=>{
+      const id = cb.closest('.action-item').dataset.id;
+      const item = actions.find(x=>x.id===id);
+      if(item){
+        item.done = cb.checked;
+        item.completedTs = cb.checked ? Date.now() : null;
+        await saveActions(); renderActions();
+      }
+    });
+  });
+  container.querySelectorAll('.priority-select').forEach(sel=>{
+    sel.addEventListener('change', async ()=>{
+      const id = sel.dataset.id;
+      const item = actions.find(x=>x.id===id);
+      if(item){ item.priority = sel.value; await saveActions(); renderActions(); }
+    });
+  });
+  container.querySelectorAll('.del-x').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.closest('.action-item').dataset.id;
+      actions = actions.filter(x=>x.id !== id);
+      await saveActions();
+      renderActions();
+    });
+  });
+}
+document.getElementById('add-action-btn').addEventListener('click', async ()=>{
+  const input = document.getElementById('new-action');
+  const val = input.value.trim();
+  if(!val) return;
+  const tag = document.getElementById('new-action-tag').value;
+  const priority = document.getElementById('new-action-priority').value;
+  actions.push({ id:'a'+Date.now(), text: val, src:'', tag, priority, done:false, completedTs:null, ts:Date.now() });
+  input.value='';
+  await saveActions();
+  renderActions();
+});
+
+// Backup: export/import
+document.getElementById('export-btn').addEventListener('click', ()=>{
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    app: 'The Map Room',
+    version: 1,
+    map_entries: entries,
+    urge_logs: urges,
+    action_items: actions,
+    energy_logs: energyLogs,
+    daily_plan: dailyPlan,
+    wishlist: wishlist,
+    custom_tags: customTags
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const dateStr = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `map-room-backup-${dateStr}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  document.getElementById('last-export-note').textContent = 'Backup downloaded just now.';
+});
+document.getElementById('import-btn').addEventListener('click', ()=>{
+  document.getElementById('import-file-input').click();
+});
+document.getElementById('import-file-input').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (evt)=>{
+    let data;
+    try{ data = JSON.parse(evt.target.result); }
+    catch(err){ alert('That file could not be read as a valid backup (not valid JSON).'); return; }
+    if(!data || typeof data !== 'object' || !('map_entries' in data)){
+      alert('That file does not look like a Map Room backup.');
+      return;
+    }
+    const proceed = confirm('This will replace everything currently in the app with the contents of this backup. This cannot be undone. Continue?');
+    if(!proceed) return;
+    entries = data.map_entries || [];
+    urges = data.urge_logs || [];
+    actions = data.action_items || [];
+    energyLogs = data.energy_logs || [];
+    dailyPlan = data.daily_plan || [];
+    wishlist = data.wishlist || [];
+    customTags = data.custom_tags || [];
+    await saveEntries(); await saveUrges(); await saveActions(); await saveEnergy();
+    await saveDailyPlan(); await saveWishlist(); await saveCustomTags();
+    rebuildTagMeta();
+    renderCustomTagButtons();
+    populateActionTagSelect();
+    renderMap(); renderUrges(); renderActions(); renderEnergy(); renderDailyPlan(); renderWishlist();
+    document.getElementById('last-export-note').textContent = 'Backup restored just now.';
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+loadAll();
+</script>
+</body>
+</html>
