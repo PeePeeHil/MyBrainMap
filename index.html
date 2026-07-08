@@ -180,15 +180,42 @@
         <button class="tag-btn" data-tag="other">Something else</button>
         <button class="tag-btn" id="add-tag-btn" style="border-style:dashed;">+ New tag</button>
       </div>
-      <div id="new-tag-form" style="display:none;gap:8px;margin:0 0 12px;align-items:center;">
-        <input type="text" id="new-tag-name" placeholder="Name this tag (e.g. Health, Money)" style="flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font-family:inherit;font-size:13.5px;">
-        <button class="btn-primary" id="new-tag-save" style="padding:8px 14px;">Add</button>
-        <button class="btn-ghost" id="new-tag-cancel" style="padding:8px 14px;">Cancel</button>
+      <div id="new-tag-form" style="display:none;flex-direction:column;gap:10px;margin:0 0 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="new-tag-name" placeholder="Name this tag (e.g. Health, Money)" style="flex:1;background:var(--surface);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font-family:inherit;font-size:13.5px;">
+        </div>
+        <div>
+          <div class="q-label" style="margin-top:0;font-size:12.5px;">Questions for this tag, when you reflect on a thought here:</div>
+          <div class="choice-row" id="question-source-row">
+            <button class="choice-btn selected" data-val="suggested">Use a suggested style</button>
+            <button class="choice-btn" data-val="custom">Write my own</button>
+          </div>
+        </div>
+        <div id="suggested-question-block">
+          <select id="suggested-question-select" style="width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font-family:inherit;font-size:13.5px;">
+            <option value="urge">Like Urge / craving (trigger, wait it out, tell someone, tiny alternative)</option>
+            <option value="self">Like Self-talk (evidence for/against, kinder reframe)</option>
+            <option value="job">Like Job search (real decision, worst case, small reversible step)</option>
+            <option value="business">Like Business idea (real decision, who'd pay, cheap test)</option>
+            <option value="sleep">Like Sleep (what kept you up, one change for tonight)</option>
+            <option value="default">Generic (need it's meeting, one small step)</option>
+          </select>
+        </div>
+        <div id="custom-question-block" style="display:none;flex-direction:column;gap:8px;">
+          <input type="text" class="custom-q-input" placeholder="Question 1" style="background:var(--surface);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font-family:inherit;font-size:13.5px;">
+          <input type="text" class="custom-q-input" placeholder="Question 2 (optional)" style="background:var(--surface);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font-family:inherit;font-size:13.5px;">
+          <input type="text" class="custom-q-input" placeholder="Question 3 (optional)" style="background:var(--surface);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font-family:inherit;font-size:13.5px;">
+          <input type="text" class="custom-q-input last-q" placeholder="Last question — its answer becomes your action step" style="background:var(--surface);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font-family:inherit;font-size:13.5px;">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-primary" id="new-tag-save" style="padding:8px 14px;">Add</button>
+          <button class="btn-ghost" id="new-tag-cancel" style="padding:8px 14px;">Cancel</button>
+        </div>
       </div>
       <button class="save-btn" id="save-entry" disabled>Drop it on the map</button>
     </div>
     <div class="map-wrap">
-      <svg id="map-svg" viewBox="0 0 1100 460"></svg>
+      <svg id="map-svg" viewBox="0 0 1100 620"></svg>
       <div class="empty-map" id="map-empty">Nothing on the map yet. Drop a thought in above — it'll appear here.</div>
     </div>
   </div>
@@ -280,6 +307,13 @@
         <button class="choice-btn" data-val="Stepped outside for 2 minutes">Outside, 2 min</button>
         <button class="choice-btn" data-val="Read or watched one thing just out of curiosity">10 min of curiosity</button>
         <button class="choice-btn" data-val="Sent one message to a friend">Texted a friend</button>
+        <span id="custom-tiny-wins"></span>
+        <button class="choice-btn" id="add-tiny-win-btn" style="border-style:dashed;">+ Add your own</button>
+      </div>
+      <div id="new-tiny-win-form" style="display:none;gap:8px;margin:10px 0 0;align-items:center;">
+        <input type="text" id="new-tiny-win-name" placeholder="A tiny thing you'd actually do..." style="flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font-family:inherit;font-size:13.5px;">
+        <button class="btn-primary" id="new-tiny-win-save" style="padding:8px 14px;">Add</button>
+        <button class="btn-ghost" id="new-tiny-win-cancel" style="padding:8px 14px;">Cancel</button>
       </div>
       <div class="stat-row" style="margin-top:16px;">
         <div class="stat"><div class="num" id="energy-wins-week">0</div><div class="lbl">Tiny wins this week</div></div>
@@ -383,12 +417,12 @@
 
 <script>
 const BASE_TAGS = {
-  urge:{label:'Urge / craving', color:getVar('--urge'), anchor:[550,75]},
-  job:{label:'Job search', color:getVar('--job'), anchor:[911,186]},
-  business:{label:'Business idea', color:getVar('--business'), anchor:[773,364]},
-  self:{label:'Self-talk', color:getVar('--self'), anchor:[327,364]},
-  sleep:{label:'Sleep', color:getVar('--sleep'), anchor:[189,186]},
-  other:{label:'Something else', color:getVar('--other'), anchor:[550,235]}
+  urge:{label:'Urge / craving', color:getVar('--urge'), anchor:[550,60]},
+  job:{label:'Job search', color:getVar('--job'), anchor:[949,233]},
+  business:{label:'Business idea', color:getVar('--business'), anchor:[797,512]},
+  self:{label:'Self-talk', color:getVar('--self'), anchor:[303,512]},
+  sleep:{label:'Sleep', color:getVar('--sleep'), anchor:[151,233]},
+  other:{label:'Something else', color:getVar('--other'), anchor:[550,310]}
 };
 const CUSTOM_PALETTE = ['#A8577A','#3C7FA6','#96793A','#4C8F63','#B15A3A','#6B5FA8'];
 let customTags = [];
@@ -398,9 +432,9 @@ function rebuildTagMeta(){
   const n = customTags.length;
   customTags.forEach((t, i)=>{
     const angle = (Math.PI*2 * i / Math.max(n,1)) - Math.PI/2;
-    const radius = 95;
+    const radius = 150;
     const x = 550 + Math.cos(angle)*radius;
-    const y = 235 + Math.sin(angle)*radius*0.75;
+    const y = 310 + Math.sin(angle)*radius*0.75;
     TAG_META[t.id] = { label: t.label, color: t.color, anchor:[x,y] };
   });
 }
@@ -412,6 +446,8 @@ let actions = [];
 let energyLogs = [];
 let dailyPlan = [];
 let wishlist = [];
+let customTinyWins = [];
+let customQuestionSets = {};
 let activeEnergyLevel = null;
 let selectedTag = null;
 let activeTrigger = null, activeContext = null, activeIntensity = null, activeSpent = null;
@@ -443,11 +479,13 @@ async function persistAll(){
   if(IS_ELECTRON){
     await window.electronAPI.saveData({
       map_entries: entries, urge_logs: urges, action_items: actions,
-      energy_logs: energyLogs, daily_plan: dailyPlan, wishlist: wishlist, custom_tags: customTags
+      energy_logs: energyLogs, daily_plan: dailyPlan, wishlist: wishlist, custom_tags: customTags,
+      custom_tiny_wins: customTinyWins, custom_question_sets: customQuestionSets
     });
   } else {
     lsSet('map_entries', entries); lsSet('urge_logs', urges); lsSet('action_items', actions);
     lsSet('energy_logs', energyLogs); lsSet('daily_plan', dailyPlan); lsSet('wishlist', wishlist); lsSet('custom_tags', customTags);
+    lsSet('custom_tiny_wins', customTinyWins); lsSet('custom_question_sets', customQuestionSets);
   }
 }
 
@@ -467,6 +505,8 @@ async function loadAll(){
     dailyPlan = data.daily_plan || [];
     wishlist = data.wishlist || [];
     customTags = data.custom_tags || [];
+    customTinyWins = data.custom_tiny_wins || [];
+    customQuestionSets = data.custom_question_sets || {};
   } else {
     // no iCloud file yet (or running as a plain webpage) — fall back to localStorage,
     // and if we're in Electron, write it straight into the iCloud file so it's there next time
@@ -477,15 +517,20 @@ async function loadAll(){
     dailyPlan = lsGet('daily_plan') || [];
     wishlist = lsGet('wishlist') || [];
     customTags = lsGet('custom_tags') || [];
+    customTinyWins = lsGet('custom_tiny_wins') || [];
+    customQuestionSets = lsGet('custom_question_sets') || {};
     if(IS_ELECTRON) await persistAll();
   }
   rebuildTagMeta();
   const migrated = migrateActionData();
   if(migrated) await saveActions();
   renderCustomTagButtons();
+  renderCustomTinyWinButtons();
   populateActionTagSelect();
   renderMap(); renderUrges(); renderActions(); renderEnergy(); renderDailyPlan(); renderWishlist();
 }
+async function saveCustomTinyWins(){ await persistAll(); }
+async function saveCustomQuestionSets(){ await persistAll(); }
 function migrateActionData(){
   let changed = false;
   actions.forEach(a=>{
@@ -551,9 +596,29 @@ document.getElementById('add-tag-btn').addEventListener('click', ()=>{
   document.getElementById('new-tag-form').style.display = 'flex';
   document.getElementById('new-tag-name').focus();
 });
+let questionSourceMode = 'suggested';
+document.getElementById('question-source-row').addEventListener('click', (e)=>{
+  const b = e.target.closest('.choice-btn');
+  if(!b) return;
+  document.querySelectorAll('#question-source-row .choice-btn').forEach(x=>x.classList.remove('selected'));
+  b.classList.add('selected');
+  questionSourceMode = b.dataset.val;
+  document.getElementById('suggested-question-block').style.display = questionSourceMode === 'suggested' ? 'block' : 'none';
+  document.getElementById('custom-question-block').style.display = questionSourceMode === 'custom' ? 'flex' : 'none';
+});
+function resetNewTagForm(){
+  document.getElementById('new-tag-name').value = '';
+  document.querySelectorAll('.custom-q-input').forEach(inp=> inp.value = '');
+  document.querySelectorAll('#question-source-row .choice-btn').forEach(x=>x.classList.remove('selected'));
+  document.querySelector('#question-source-row .choice-btn[data-val="suggested"]').classList.add('selected');
+  document.getElementById('suggested-question-select').value = 'urge';
+  questionSourceMode = 'suggested';
+  document.getElementById('suggested-question-block').style.display = 'block';
+  document.getElementById('custom-question-block').style.display = 'none';
+}
 document.getElementById('new-tag-cancel').addEventListener('click', ()=>{
   document.getElementById('new-tag-form').style.display = 'none';
-  document.getElementById('new-tag-name').value = '';
+  resetNewTagForm();
 });
 document.getElementById('new-tag-save').addEventListener('click', async ()=>{
   const name = document.getElementById('new-tag-name').value.trim();
@@ -561,14 +626,24 @@ document.getElementById('new-tag-save').addEventListener('click', async ()=>{
   const id = 'custom_' + name.toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,24) + '_' + Date.now().toString(36);
   const color = CUSTOM_PALETTE[customTags.length % CUSTOM_PALETTE.length];
   customTags.push({ id, label: name, color });
+
+  if(questionSourceMode === 'suggested'){
+    const base = document.getElementById('suggested-question-select').value;
+    customQuestionSets[id] = [...(QUESTION_SETS[base] || QUESTION_SETS.default)];
+  } else {
+    const vals = Array.from(document.querySelectorAll('.custom-q-input')).map(inp=>inp.value.trim()).filter(Boolean);
+    customQuestionSets[id] = vals.length ? vals : [...QUESTION_SETS.default];
+  }
+
   await saveCustomTags();
+  await saveCustomQuestionSets();
   rebuildTagMeta();
   renderCustomTagButtons();
   populateActionTagSelect();
   renderMap();
   renderActions();
-  document.getElementById('new-tag-name').value = '';
   document.getElementById('new-tag-form').style.display = 'none';
+  resetNewTagForm();
 });
 document.getElementById('capture-text').addEventListener('input', checkSaveEnabled);
 function checkSaveEnabled(){
@@ -609,7 +684,7 @@ function renderMap(){
     const meta = TAG_META[entry.tag] || TAG_META.other;
     const [ax,ay] = meta.anchor;
     const angle = entry.seed * Math.PI * 2;
-    const dist = 20 + (entry.seed * 60);
+    const dist = 25 + (entry.seed * 75);
     const x = ax + Math.cos(angle)*dist;
     const y = ay + Math.sin(angle)*dist;
 
@@ -672,8 +747,13 @@ const QUESTION_SETS = {
   ]
 };
 
+function getQuestionsForTag(tag){
+  if(customQuestionSets[tag] && customQuestionSets[tag].length) return customQuestionSets[tag];
+  return QUESTION_SETS[tag] || QUESTION_SETS.default;
+}
+
 function renderModalQuestions(tag){
-  const qset = QUESTION_SETS[tag] || QUESTION_SETS.default;
+  const qset = getQuestionsForTag(tag);
   const container = document.getElementById('modal-questions');
   container.innerHTML = qset.map((q,i)=>`
     <div class="q-label" style="${i===0?'margin-top:14px;':''}">${q}</div>
@@ -725,7 +805,7 @@ document.getElementById('modal-delete').addEventListener('click', async ()=>{
 });
 document.getElementById('modal-save').addEventListener('click', async ()=>{
   const entry = commitModalEdits();
-  const qset = QUESTION_SETS[(entry && entry.tag)] || QUESTION_SETS.default;
+  const qset = getQuestionsForTag(entry && entry.tag);
   const lastIdx = qset.length - 1;
   const lastField = document.getElementById('modal-q-'+lastIdx);
   const step = lastField ? lastField.value.trim() : '';
@@ -838,11 +918,47 @@ document.getElementById('log-energy').addEventListener('click', async ()=>{
 });
 document.getElementById('tiny-row').addEventListener('click', async e=>{
   if(!e.target.classList.contains('choice-btn')) return;
+  if(e.target.id === 'add-tiny-win-btn') return;
+  if(!e.target.dataset.val) return;
   energyLogs.push({ id:'en'+Date.now(), type:'win', label: e.target.dataset.val, ts: Date.now() });
   await saveEnergy();
   renderEnergy();
   renderActions();
 });
+document.getElementById('add-tiny-win-btn').addEventListener('click', ()=>{
+  document.getElementById('new-tiny-win-form').style.display = 'flex';
+  document.getElementById('new-tiny-win-name').focus();
+});
+document.getElementById('new-tiny-win-cancel').addEventListener('click', ()=>{
+  document.getElementById('new-tiny-win-form').style.display = 'none';
+  document.getElementById('new-tiny-win-name').value = '';
+});
+document.getElementById('new-tiny-win-save').addEventListener('click', async ()=>{
+  const name = document.getElementById('new-tiny-win-name').value.trim();
+  if(!name) return;
+  customTinyWins.push({ id:'ctw'+Date.now(), label: name });
+  await saveCustomTinyWins();
+  renderCustomTinyWinButtons();
+  document.getElementById('new-tiny-win-name').value = '';
+  document.getElementById('new-tiny-win-form').style.display = 'none';
+});
+function renderCustomTinyWinButtons(){
+  const container = document.getElementById('custom-tiny-wins');
+  container.innerHTML = customTinyWins.map(t=>`
+    <span style="display:inline-flex;align-items:center;gap:2px;">
+      <button class="choice-btn" data-val="${escapeHtml(t.label)}">${escapeHtml(t.label)}</button>
+      <button class="del-x" data-id="${t.id}" title="Remove this tiny win" style="font-size:13px;">✕</button>
+    </span>`).join('');
+  container.querySelectorAll('.del-x').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      customTinyWins = customTinyWins.filter(t=>t.id !== id);
+      await saveCustomTinyWins();
+      renderCustomTinyWinButtons();
+    });
+  });
+}
 function renderEnergy(){
   const weekAgo = Date.now() - 7*24*60*60*1000;
   const wins = energyLogs.filter(l=>l.type==='win');
@@ -1126,7 +1242,9 @@ document.getElementById('export-btn').addEventListener('click', ()=>{
     energy_logs: energyLogs,
     daily_plan: dailyPlan,
     wishlist: wishlist,
-    custom_tags: customTags
+    custom_tags: customTags,
+    custom_tiny_wins: customTinyWins,
+    custom_question_sets: customQuestionSets
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -1164,10 +1282,13 @@ document.getElementById('import-file-input').addEventListener('change', (e)=>{
     dailyPlan = data.daily_plan || [];
     wishlist = data.wishlist || [];
     customTags = data.custom_tags || [];
+    customTinyWins = data.custom_tiny_wins || [];
+    customQuestionSets = data.custom_question_sets || {};
     await saveEntries(); await saveUrges(); await saveActions(); await saveEnergy();
-    await saveDailyPlan(); await saveWishlist(); await saveCustomTags();
+    await saveDailyPlan(); await saveWishlist(); await saveCustomTags(); await saveCustomTinyWins(); await saveCustomQuestionSets();
     rebuildTagMeta();
     renderCustomTagButtons();
+    renderCustomTinyWinButtons();
     populateActionTagSelect();
     renderMap(); renderUrges(); renderActions(); renderEnergy(); renderDailyPlan(); renderWishlist();
     document.getElementById('last-export-note').textContent = 'Backup restored just now.';
