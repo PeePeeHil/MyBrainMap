@@ -75,8 +75,37 @@
   .node circle{transition:r .15s;}
   .node:hover circle{r:11;}
   .node text{font-size:9px;fill:var(--on-accent);font-weight:600;pointer-events:none;}
-  .zone-label{font-size:12px;fill:var(--muted);font-family:Georgia,'Iowan Old Style','Palatino Linotype',Palatino,serif;font-style:italic;letter-spacing:.01em;}
-  .empty-map{color:var(--muted);text-align:center;padding:40px 20px;font-size:14px;}
+  .map-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px;align-items:start;}
+  .week-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px;}
+  .day-col{background:linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 16%);border:1px solid var(--line);border-radius:12px;padding:10px 10px 12px;position:relative;overflow:hidden;}
+  .day-col.is-today::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--business);}
+  .day-col-header{font-family:Georgia,'Iowan Old Style','Palatino Linotype',Palatino,serif;font-style:italic;font-size:14px;margin-bottom:8px;color:var(--text);}
+  .day-col-header .date-sub{display:block;font-style:normal;font-size:10.5px;color:var(--muted);font-family:'IBM Plex Sans',sans-serif;}
+  .day-task{display:flex;align-items:flex-start;gap:6px;padding:6px 0;border-bottom:1px solid var(--line);}
+  .day-task:last-child{border-bottom:none;}
+  .day-task input[type=checkbox]{margin-top:3px;width:14px;height:14px;accent-color:var(--business);flex-shrink:0;}
+  .day-task-text{font-size:12.5px;flex:1;line-height:1.35;}
+  .day-task.done .day-task-text{color:var(--muted);text-decoration:line-through;}
+  .day-task-est{font-size:10.5px;color:var(--business);white-space:nowrap;}
+  .day-task .del-x{font-size:11px;padding:1px 3px;flex-shrink:0;}
+  .day-add-row{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
+  .day-add-row input{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:5px 7px;font-family:inherit;font-size:12px;}
+  .day-add-row .est-row{display:flex;gap:5px;}
+  .day-add-row .est-row input{width:70px;flex-shrink:0;}
+  .day-add-row button{background:var(--business);color:var(--on-accent);border:none;border-radius:6px;padding:5px 8px;font-size:11.5px;font-weight:600;flex:1;}
+  .meal-slot{margin-bottom:8px;}
+  .meal-slot label{display:block;font-size:10.5px;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.03em;}
+  .meal-slot input{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:6px;color:var(--text);padding:6px 8px;font-family:inherit;font-size:12.5px;}
+  .zone-box{background:linear-gradient(180deg, var(--surface-2) 0%, var(--surface) 16%);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px 16px;position:relative;overflow:hidden;}
+  .zone-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--zone-color, var(--business));}
+  .zone-box-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px;gap:8px;}
+  .zone-box-title{font-family:Georgia,'Iowan Old Style','Palatino Linotype',Palatino,serif;font-style:italic;font-weight:600;font-size:17px;color:var(--text);}
+  .zone-box-count{font-size:12px;color:var(--muted);white-space:nowrap;}
+  .zone-dots{display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;min-height:22px;}
+  .zone-dot{width:20px;height:20px;border-radius:50%;border:none;cursor:pointer;padding:0;transition:transform .12s;flex-shrink:0;}
+  .zone-dot:hover{transform:scale(1.2);}
+  .zone-empty-text{color:var(--muted);font-size:12.5px;font-style:italic;}
+  .dot-tooltip{position:fixed;display:none;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:13px;line-height:1.4;color:var(--text);max-width:240px;box-shadow:0 6px 18px rgba(59,46,34,.18);pointer-events:none;z-index:200;}
 
   /* Modal */
   .modal-bg{display:none;position:fixed;inset:0;background:rgba(8,15,13,.7);align-items:center;justify-content:center;z-index:50;padding:20px;}
@@ -139,6 +168,7 @@
 </head>
 <body>
 <div class="app">
+<div id="dot-tooltip" class="dot-tooltip"></div>
   <div class="header">
     <div>
       <div class="eyebrow">a private map, not a diagnosis</div>
@@ -151,19 +181,26 @@
     Your browser isn't allowing this page to save anything right now (this can happen in private/incognito mode, or with strict browser settings). Nothing you enter will be kept after you close this tab unless you fix that.
   </div>
 
-  <div style="display:flex;gap:16px;align-items:center;margin-bottom:6px;">
+  <div style="display:flex;gap:16px;align-items:center;margin-bottom:6px;flex-wrap:wrap;">
     <button class="btn-ghost" id="export-btn" style="font-size:12.5px;padding:6px 12px;">⬇ Export backup</button>
     <button class="btn-ghost" id="import-btn" style="font-size:12.5px;padding:6px 12px;">⬆ Import backup</button>
     <input type="file" id="import-file-input" accept=".json" style="display:none;">
+    <label style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12.5px;cursor:pointer;">
+      <input type="checkbox" id="notifications-toggle" style="accent-color:var(--business);">
+      Hourly check-in notification
+    </label>
+    <button class="btn-ghost" id="test-notification-btn" style="font-size:12.5px;padding:6px 12px;">Send test notification</button>
     <span style="color:var(--muted);font-size:12px;" id="last-export-note"></span>
   </div>
 
   <div class="tabs">
     <button class="tab active" data-panel="map">The Map</button>
-    <button class="tab" data-panel="urge">Urge Log</button>
+    <button class="tab" data-panel="urge">Before I Act</button>
     <button class="tab" data-panel="energy">Energy</button>
     <button class="tab" data-panel="today">Today</button>
+    <button class="tab" data-panel="meals">Meals</button>
     <button class="tab" data-panel="wishlist">Wishlist</button>
+    <button class="tab" data-panel="debt">Debt</button>
     <button class="tab" data-panel="actions">Action Plan</button>
   </div>
 
@@ -172,12 +209,6 @@
     <div class="card capture">
       <textarea id="capture-text" placeholder="Whatever's loudest right now..."></textarea>
       <div class="tag-row" id="tag-row">
-        <button class="tag-btn" data-tag="urge">Urge / craving</button>
-        <button class="tag-btn" data-tag="job">Job search</button>
-        <button class="tag-btn" data-tag="business">Business idea</button>
-        <button class="tag-btn" data-tag="self">Self-talk</button>
-        <button class="tag-btn" data-tag="sleep">Sleep</button>
-        <button class="tag-btn" data-tag="other">Something else</button>
         <button class="tag-btn" id="add-tag-btn" style="border-style:dashed;">+ New tag</button>
       </div>
       <div id="new-tag-form" style="display:none;flex-direction:column;gap:10px;margin:0 0 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:12px 14px;">
@@ -214,10 +245,7 @@
       </div>
       <button class="save-btn" id="save-entry" disabled>Drop it on the map</button>
     </div>
-    <div class="map-wrap">
-      <svg id="map-svg" viewBox="0 0 1100 620"></svg>
-      <div class="empty-map" id="map-empty">Nothing on the map yet. Drop a thought in above — it'll appear here.</div>
-    </div>
+    <div id="map-grid" class="map-grid"></div>
   </div>
 
   <!-- URGE PANEL -->
@@ -236,6 +264,13 @@
             <button class="choice-btn" data-val="Impulse">Impulse</button>
             <button class="choice-btn" data-val="Boredom">Boredom</button>
             <button class="choice-btn" data-val="Other">Other</button>
+            <span id="custom-triggers"></span>
+            <button class="choice-btn" id="add-trigger-btn" style="border-style:dashed;">+ Add your own</button>
+          </div>
+          <div id="new-trigger-form" style="display:none;gap:8px;margin:8px 0 0;align-items:center;">
+            <input type="text" id="new-trigger-name" placeholder="A trigger that's actually yours..." style="flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font-family:inherit;font-size:13.5px;">
+            <button class="btn-primary" id="new-trigger-save" style="padding:8px 14px;">Add</button>
+            <button class="btn-ghost" id="new-trigger-cancel" style="padding:8px 14px;">Cancel</button>
           </div>
         </div>
         <div>
@@ -330,7 +365,7 @@
   <div class="panel" id="panel-wishlist">
     <div class="card">
       <h3 style="font-size:16px;margin-bottom:4px;">Things worth saving for</h3>
-      <p style="color:var(--muted);font-size:13.5px;margin:4px 0 14px;">What you'd actually spend on if the money went somewhere real. When you log a temptation amount in the Urge Log, this list gets checked for something close to that price.</p>
+      <p style="color:var(--muted);font-size:13.5px;margin:4px 0 14px;">What you'd actually spend on if the money went somewhere real. When you log a temptation amount in Before I Act, this list gets checked for something close to that price.</p>
       <div class="add-action" style="flex-wrap:wrap;">
         <input type="text" id="new-wishlist-name" placeholder="Item — e.g. weekend trip, headphones..." style="min-width:200px;">
         <input type="number" id="new-wishlist-price" placeholder="Price ($)" min="0" step="0.01" style="width:120px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:9px 10px;font-family:inherit;font-size:14px;">
@@ -343,20 +378,62 @@
     </div>
   </div>
 
+  <!-- DEBT PANEL -->
+  <div class="panel" id="panel-debt">
+    <div class="card">
+      <h3 style="font-size:16px;margin-bottom:4px;">The number itself</h3>
+      <p style="color:var(--muted);font-size:13.5px;margin:4px 0 12px;">Set it once, update it if it changes. This isn't financial advice — just making the number visible instead of vague.</p>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span style="color:var(--muted);font-size:14px;">Total owed:</span>
+        <input type="number" id="debt-total-input" min="0" step="0.01" placeholder="5000" style="width:140px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:8px 10px;font-family:inherit;font-size:14px;">
+        <button class="btn-primary" id="debt-total-save" style="padding:8px 14px;">Save</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stat-row">
+        <div class="stat"><div class="num" id="debt-remaining">$0</div><div class="lbl">Remaining</div></div>
+        <div class="stat"><div class="num" id="debt-paid-pct">0%</div><div class="lbl">Paid off</div></div>
+        <div class="stat"><div class="num" id="debt-resisted-total">$0</div><div class="lbl">Resisted, all time</div></div>
+      </div>
+      <div style="background:var(--surface-2);border-radius:8px;height:10px;overflow:hidden;margin-top:4px;">
+        <div id="debt-progress-bar" style="height:100%;width:0%;background:var(--job);transition:width .3s;"></div>
+      </div>
+      <p style="color:var(--muted);font-size:12.5px;margin-top:10px;" id="debt-context-note"></p>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:16px;margin-bottom:4px;">Log a payment</h3>
+      <p style="color:var(--muted);font-size:13.5px;margin:4px 0 12px;">Any real payment you made toward it — doesn't need to be from resisted money specifically.</p>
+      <div class="add-action" style="flex-wrap:wrap;">
+        <input type="number" id="new-payment-amount" placeholder="Amount ($)" min="0" step="0.01" style="width:140px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;color:var(--text);padding:9px 10px;font-family:inherit;font-size:14px;">
+        <input type="text" id="new-payment-note" placeholder="Optional note..." style="flex:1;min-width:150px;">
+        <button class="btn-primary" id="add-payment-btn">Log it</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:16px;margin-bottom:10px;">Payment history</h3>
+      <div id="payment-list"></div>
+    </div>
+  </div>
+
   <!-- TODAY PANEL -->
   <div class="panel" id="panel-today">
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px;">
-        <h3 style="font-size:16px;" id="today-date-label">Today</h3>
-        <span style="color:var(--muted);font-size:12.5px;" id="today-progress">0 of 0 done</span>
-      </div>
-      <p style="color:var(--muted);font-size:13.5px;margin:4px 0 14px;">What would make today feel like it went well? Keep it short — a handful of things, not a wishlist.</p>
-      <div class="add-action">
-        <input type="text" id="new-today-item" placeholder="Something to get done today...">
-        <button class="btn-primary" id="add-today-btn">Add</button>
-      </div>
-      <div id="today-list" style="margin-top:12px;"></div>
+      <h3 style="font-size:16px;margin-bottom:2px;" id="week-range-label">This week</h3>
+      <p style="color:var(--muted);font-size:13.5px;margin:4px 0 0;">What would make each day feel like it went well? Keep it short — a handful of things per day, not a wishlist. Add a rough time next to anything worth timeboxing.</p>
     </div>
+    <div id="week-grid" class="week-grid"></div>
+  </div>
+
+  <!-- MEALS PANEL -->
+  <div class="panel" id="panel-meals">
+    <div class="card">
+      <h3 style="font-size:16px;margin-bottom:2px;" id="meals-week-range-label">This week</h3>
+      <p style="color:var(--muted);font-size:13.5px;margin:4px 0 0;">Short names of what you're planning — doesn't need to be exact, just enough to not be deciding from scratch at 6pm.</p>
+    </div>
+    <div id="meals-grid" class="week-grid"></div>
   </div>
 
   <!-- ACTIONS PANEL -->
@@ -417,26 +494,26 @@
 
 <script>
 const BASE_TAGS = {
-  urge:{label:'Urge / craving', color:getVar('--urge'), anchor:[550,60]},
-  job:{label:'Job search', color:getVar('--job'), anchor:[949,233]},
-  business:{label:'Business idea', color:getVar('--business'), anchor:[797,512]},
-  self:{label:'Self-talk', color:getVar('--self'), anchor:[303,512]},
-  sleep:{label:'Sleep', color:getVar('--sleep'), anchor:[151,233]},
-  other:{label:'Something else', color:getVar('--other'), anchor:[550,310]}
+  urge:{label:'Urge / craving', color:getVar('--urge')},
+  job:{label:'Job search', color:getVar('--job')},
+  business:{label:'Business idea', color:getVar('--business')},
+  self:{label:'Self-talk', color:getVar('--self')},
+  sleep:{label:'Sleep', color:getVar('--sleep')},
+  other:{label:'Something else', color:getVar('--other')}
 };
 const CUSTOM_PALETTE = ['#A8577A','#3C7FA6','#96793A','#4C8F63','#B15A3A','#6B5FA8'];
 let customTags = [];
-let TAG_META = {...BASE_TAGS};
+let hiddenBaseTags = [];
+let TAG_META = {};
 function rebuildTagMeta(){
-  TAG_META = {...BASE_TAGS};
-  const n = customTags.length;
-  customTags.forEach((t, i)=>{
-    const angle = (Math.PI*2 * i / Math.max(n,1)) - Math.PI/2;
-    const radius = 150;
-    const x = 550 + Math.cos(angle)*radius;
-    const y = 310 + Math.sin(angle)*radius*0.75;
-    TAG_META[t.id] = { label: t.label, color: t.color, anchor:[x,y] };
+  TAG_META = {};
+  Object.entries(BASE_TAGS).forEach(([id,meta])=>{
+    if(id !== 'other' && !hiddenBaseTags.includes(id)) TAG_META[id] = meta;
   });
+  customTags.forEach(t=>{
+    TAG_META[t.id] = { label: t.label, color: t.color };
+  });
+  TAG_META.other = BASE_TAGS.other;
 }
 function getVar(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
 
@@ -445,8 +522,13 @@ let urges = [];
 let actions = [];
 let energyLogs = [];
 let dailyPlan = [];
+let mealPlan = [];
+let debtTotal = 0;
+let debtPayments = [];
+let notificationsEnabled = false;
 let wishlist = [];
 let customTinyWins = [];
+let customTriggers = [];
 let customQuestionSets = {};
 let activeEnergyLevel = null;
 let selectedTag = null;
@@ -480,12 +562,16 @@ async function persistAll(){
     await window.electronAPI.saveData({
       map_entries: entries, urge_logs: urges, action_items: actions,
       energy_logs: energyLogs, daily_plan: dailyPlan, wishlist: wishlist, custom_tags: customTags,
-      custom_tiny_wins: customTinyWins, custom_question_sets: customQuestionSets
+      custom_tiny_wins: customTinyWins, custom_question_sets: customQuestionSets, hidden_base_tags: hiddenBaseTags,
+      custom_triggers: customTriggers, meal_plan: mealPlan, debt_total: debtTotal, debt_payments: debtPayments,
+      notifications_enabled: notificationsEnabled
     });
   } else {
     lsSet('map_entries', entries); lsSet('urge_logs', urges); lsSet('action_items', actions);
     lsSet('energy_logs', energyLogs); lsSet('daily_plan', dailyPlan); lsSet('wishlist', wishlist); lsSet('custom_tags', customTags);
-    lsSet('custom_tiny_wins', customTinyWins); lsSet('custom_question_sets', customQuestionSets);
+    lsSet('custom_tiny_wins', customTinyWins); lsSet('custom_question_sets', customQuestionSets); lsSet('hidden_base_tags', hiddenBaseTags);
+    lsSet('custom_triggers', customTriggers); lsSet('meal_plan', mealPlan); lsSet('debt_total', debtTotal); lsSet('debt_payments', debtPayments);
+    lsSet('notifications_enabled', notificationsEnabled);
   }
 }
 
@@ -507,6 +593,12 @@ async function loadAll(){
     customTags = data.custom_tags || [];
     customTinyWins = data.custom_tiny_wins || [];
     customQuestionSets = data.custom_question_sets || {};
+    hiddenBaseTags = data.hidden_base_tags || [];
+    customTriggers = data.custom_triggers || [];
+    mealPlan = data.meal_plan || [];
+    debtTotal = data.debt_total || 0;
+    debtPayments = data.debt_payments || [];
+    notificationsEnabled = !!data.notifications_enabled;
   } else {
     // no iCloud file yet (or running as a plain webpage) — fall back to localStorage,
     // and if we're in Electron, write it straight into the iCloud file so it's there next time
@@ -519,6 +611,12 @@ async function loadAll(){
     customTags = lsGet('custom_tags') || [];
     customTinyWins = lsGet('custom_tiny_wins') || [];
     customQuestionSets = lsGet('custom_question_sets') || {};
+    hiddenBaseTags = lsGet('hidden_base_tags') || [];
+    customTriggers = lsGet('custom_triggers') || [];
+    mealPlan = lsGet('meal_plan') || [];
+    debtTotal = lsGet('debt_total') || 0;
+    debtPayments = lsGet('debt_payments') || [];
+    notificationsEnabled = !!lsGet('notifications_enabled');
     if(IS_ELECTRON) await persistAll();
   }
   rebuildTagMeta();
@@ -526,11 +624,17 @@ async function loadAll(){
   if(migrated) await saveActions();
   renderCustomTagButtons();
   renderCustomTinyWinButtons();
+  renderCustomTriggerButtons();
   populateActionTagSelect();
-  renderMap(); renderUrges(); renderActions(); renderEnergy(); renderDailyPlan(); renderWishlist();
+  renderMap(); renderUrges(); renderActions(); renderEnergy(); renderDailyPlan(); renderWishlist(); renderMeals(); renderDebt();
+  document.getElementById('notifications-toggle').checked = notificationsEnabled;
 }
 async function saveCustomTinyWins(){ await persistAll(); }
 async function saveCustomQuestionSets(){ await persistAll(); }
+async function saveHiddenBaseTags(){ await persistAll(); }
+async function saveCustomTriggers(){ await persistAll(); }
+async function saveMealPlan(){ await persistAll(); }
+async function saveDebt(){ await persistAll(); }
 function migrateActionData(){
   let changed = false;
   actions.forEach(a=>{
@@ -576,21 +680,75 @@ document.getElementById('tag-row').addEventListener('click', (e)=>{
   checkSaveEnabled();
 });
 function renderCustomTagButtons(){
-  document.querySelectorAll('#tag-row .tag-btn.custom-tag').forEach(el=>el.remove());
+  document.querySelectorAll('#tag-row .tag-btn:not(#add-tag-btn), #tag-row .tag-wrap').forEach(el=>el.remove());
   const addBtn = document.getElementById('add-tag-btn');
+  const orderedBaseIds = ['urge','job','business','self','sleep'];
+  const items = [];
+  orderedBaseIds.forEach(id=>{
+    if(hiddenBaseTags.includes(id)) return;
+    const meta = BASE_TAGS[id];
+    items.push({ id, label: meta.label, color: meta.color, deletable: true, isCustom: false });
+  });
   customTags.forEach(t=>{
+    items.push({ id: t.id, label: t.label, color: t.color, deletable: true, isCustom: true });
+  });
+  items.push({ id: 'other', label: BASE_TAGS.other.label, color: BASE_TAGS.other.color, deletable: false, isCustom: false });
+
+  items.forEach(t=>{
+    const wrap = document.createElement('span');
+    wrap.className = 'tag-wrap';
+    wrap.style.cssText = 'display:inline-flex;align-items:center;gap:2px;';
     const btn = document.createElement('button');
-    btn.className = 'tag-btn custom-tag';
+    btn.className = 'tag-btn' + (t.isCustom ? ' custom-tag' : '');
     btn.dataset.tag = t.id;
     btn.textContent = t.label;
-    btn.style.setProperty('--custom-color', t.color);
-    addBtn.parentNode.insertBefore(btn, addBtn);
+    wrap.appendChild(btn);
+    if(t.deletable){
+      const del = document.createElement('button');
+      del.className = 'del-x';
+      del.title = 'Remove this category';
+      del.textContent = '✕';
+      del.style.cssText = 'font-size:12px;padding:2px 3px;';
+      del.dataset.tagId = t.id;
+      del.dataset.isCustom = t.isCustom ? '1' : '0';
+      wrap.appendChild(del);
+    }
+    addBtn.parentNode.insertBefore(wrap, addBtn);
   });
-  // custom tag selected-state color (inline, since not in stylesheet)
+
   const style = document.getElementById('custom-tag-style') || document.createElement('style');
   style.id = 'custom-tag-style';
-  style.textContent = customTags.map(t=>`.tag-btn.custom-tag[data-tag="${t.id}"].selected{background:${t.color};border-color:transparent;color:var(--on-accent);font-weight:600;}`).join('\n');
+  style.textContent = items.map(t=>`.tag-btn[data-tag="${t.id}"].selected{background:${t.color};border-color:transparent;color:var(--on-accent);font-weight:600;}`).join('\n');
   document.head.appendChild(style);
+
+  document.querySelectorAll('#tag-row .del-x').forEach(delBtn=>{
+    delBtn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const tagId = delBtn.dataset.tagId;
+      const isCustom = delBtn.dataset.isCustom === '1';
+      const label = (TAG_META[tagId] && TAG_META[tagId].label) || tagId;
+      const proceed = confirm(`Remove the "${label}" category? Anything tagged with it will move to "Something else" instead — this can't be undone.`);
+      if(!proceed) return;
+      entries.forEach(en=>{ if(en.tag === tagId) en.tag = 'other'; });
+      actions.forEach(ac=>{ if(ac.tag === tagId) ac.tag = 'other'; });
+      if(isCustom){
+        customTags = customTags.filter(t=>t.id !== tagId);
+        delete customQuestionSets[tagId];
+        await saveCustomQuestionSets();
+      } else {
+        if(!hiddenBaseTags.includes(tagId)) hiddenBaseTags.push(tagId);
+        await saveHiddenBaseTags();
+      }
+      await saveEntries();
+      await saveActions();
+      await saveCustomTags();
+      rebuildTagMeta();
+      renderCustomTagButtons();
+      populateActionTagSelect();
+      renderMap();
+      renderActions();
+    });
+  });
 }
 document.getElementById('add-tag-btn').addEventListener('click', ()=>{
   document.getElementById('new-tag-form').style.display = 'flex';
@@ -663,50 +821,74 @@ document.getElementById('save-entry').addEventListener('click', async ()=>{
   renderMap();
 });
 
+function showDotTooltip(e, text){
+  const tip = document.getElementById('dot-tooltip');
+  tip.textContent = text;
+  tip.style.display = 'block';
+  positionDotTooltip(e);
+}
+function positionDotTooltip(e){
+  const tip = document.getElementById('dot-tooltip');
+  if(tip.style.display !== 'block') return;
+  const pad = 14;
+  let x = e.clientX + pad;
+  let y = e.clientY + pad;
+  const rect = tip.getBoundingClientRect();
+  if(x + rect.width > window.innerWidth - 8) x = e.clientX - rect.width - pad;
+  if(y + rect.height > window.innerHeight - 8) y = e.clientY - rect.height - pad;
+  tip.style.left = x + 'px';
+  tip.style.top = y + 'px';
+}
+function hideDotTooltip(){
+  document.getElementById('dot-tooltip').style.display = 'none';
+}
+
 function renderMap(){
-  const svg = document.getElementById('map-svg');
-  const empty = document.getElementById('map-empty');
-  svg.innerHTML = '';
-  if(entries.length === 0){ empty.style.display='block'; return; }
-  empty.style.display='none';
+  const grid = document.getElementById('map-grid');
+  grid.innerHTML = '';
 
   Object.entries(TAG_META).forEach(([tag,meta])=>{
-    const [ax,ay] = meta.anchor;
-    const label = document.createElementNS('http://www.w3.org/2000/svg','text');
-    label.setAttribute('x', ax); label.setAttribute('y', ay - 46);
-    label.setAttribute('text-anchor','middle');
-    label.setAttribute('class','zone-label');
-    label.textContent = meta.label;
-    svg.appendChild(label);
-  });
+    const zoneEntries = entries.filter(e=>e.tag === tag);
 
-  entries.forEach(entry=>{
-    const meta = TAG_META[entry.tag] || TAG_META.other;
-    const [ax,ay] = meta.anchor;
-    const angle = entry.seed * Math.PI * 2;
-    const dist = 25 + (entry.seed * 75);
-    const x = ax + Math.cos(angle)*dist;
-    const y = ay + Math.sin(angle)*dist;
+    const box = document.createElement('div');
+    box.className = 'zone-box';
+    box.style.setProperty('--zone-color', meta.color);
 
-    const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-    line.setAttribute('x1',ax); line.setAttribute('y1',ay);
-    line.setAttribute('x2',x); line.setAttribute('y2',y);
-    line.setAttribute('stroke', meta.color); line.setAttribute('stroke-opacity','0.25');
-    svg.appendChild(line);
+    const header = document.createElement('div');
+    header.className = 'zone-box-header';
+    const title = document.createElement('div');
+    title.className = 'zone-box-title';
+    title.textContent = meta.label;
+    const count = document.createElement('div');
+    count.className = 'zone-box-count';
+    count.textContent = zoneEntries.length === 1 ? '1 thought' : `${zoneEntries.length} thoughts`;
+    header.appendChild(title);
+    header.appendChild(count);
+    box.appendChild(header);
 
-    const g = document.createElementNS('http://www.w3.org/2000/svg','g');
-    g.setAttribute('class','node');
-    g.addEventListener('click', ()=> openModal(entry.id));
-    const circle = document.createElementNS('http://www.w3.org/2000/svg','circle');
-    circle.setAttribute('cx',x); circle.setAttribute('cy',y); circle.setAttribute('r', entry.reflected ? 6 : 9);
-    circle.setAttribute('fill', meta.color);
-    circle.setAttribute('opacity', entry.reflected ? 0.55 : 1);
-    g.appendChild(circle);
-    svg.appendChild(g);
+    const dotsWrap = document.createElement('div');
+    dotsWrap.className = 'zone-dots';
 
-    const title = document.createElementNS('http://www.w3.org/2000/svg','title');
-    title.textContent = entry.text;
-    g.appendChild(title);
+    if(zoneEntries.length === 0){
+      const empty = document.createElement('div');
+      empty.className = 'zone-empty-text';
+      empty.textContent = 'Nothing here yet.';
+      dotsWrap.appendChild(empty);
+    } else {
+      zoneEntries.forEach(entry=>{
+        const dot = document.createElement('button');
+        dot.className = 'zone-dot';
+        dot.style.background = meta.color;
+        dot.style.opacity = entry.reflected ? '0.5' : '1';
+        dot.addEventListener('mouseenter', (e)=> showDotTooltip(e, entry.text));
+        dot.addEventListener('mousemove', (e)=> positionDotTooltip(e));
+        dot.addEventListener('mouseleave', hideDotTooltip);
+        dot.addEventListener('click', ()=> openModal(entry.id));
+        dotsWrap.appendChild(dot);
+      });
+    }
+    box.appendChild(dotsWrap);
+    grid.appendChild(box);
   });
 }
 
@@ -820,12 +1002,48 @@ document.getElementById('modal-save').addEventListener('click', async ()=>{
   document.getElementById('modal-bg').classList.remove('open');
 });
 
-// Urge log
+// Before I Act (urge log)
 document.getElementById('trigger-row').addEventListener('click', e=>{
   if(!e.target.classList.contains('choice-btn')) return;
+  if(e.target.id === 'add-trigger-btn') return;
+  if(!e.target.dataset.val) return;
   document.querySelectorAll('#trigger-row .choice-btn').forEach(b=>b.classList.remove('selected'));
   e.target.classList.add('selected'); activeTrigger = e.target.dataset.val;
 });
+document.getElementById('add-trigger-btn').addEventListener('click', ()=>{
+  document.getElementById('new-trigger-form').style.display = 'flex';
+  document.getElementById('new-trigger-name').focus();
+});
+document.getElementById('new-trigger-cancel').addEventListener('click', ()=>{
+  document.getElementById('new-trigger-form').style.display = 'none';
+  document.getElementById('new-trigger-name').value = '';
+});
+document.getElementById('new-trigger-save').addEventListener('click', async ()=>{
+  const name = document.getElementById('new-trigger-name').value.trim();
+  if(!name) return;
+  customTriggers.push({ id:'ctr'+Date.now(), label: name });
+  await saveCustomTriggers();
+  renderCustomTriggerButtons();
+  document.getElementById('new-trigger-name').value = '';
+  document.getElementById('new-trigger-form').style.display = 'none';
+});
+function renderCustomTriggerButtons(){
+  const container = document.getElementById('custom-triggers');
+  container.innerHTML = customTriggers.map(t=>`
+    <span style="display:inline-flex;align-items:center;gap:2px;">
+      <button class="choice-btn" data-val="${escapeHtml(t.label)}">${escapeHtml(t.label)}</button>
+      <button class="del-x" data-id="${t.id}" title="Remove this trigger" style="font-size:12px;padding:2px 3px;">✕</button>
+    </span>`).join('');
+  container.querySelectorAll('.del-x').forEach(btn=>{
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      customTriggers = customTriggers.filter(t=>t.id !== id);
+      await saveCustomTriggers();
+      renderCustomTriggerButtons();
+    });
+  });
+}
 document.getElementById('context-row').addEventListener('click', e=>{
   if(!e.target.classList.contains('choice-btn')) return;
   document.querySelectorAll('#context-row .choice-btn').forEach(b=>b.classList.remove('selected'));
@@ -900,6 +1118,7 @@ function renderUrges(){
   document.getElementById('urge-spent-total').textContent = '$' + spentTotal.toFixed(2);
 }
 function escapeHtml(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function escapeAttr(s){ return escapeHtml(s).replace(/"/g,'&quot;'); }
 
 // Energy
 document.getElementById('energy-row').addEventListener('click', e=>{
@@ -1037,62 +1256,196 @@ document.getElementById('tempt-amount').addEventListener('input', (e)=>{
   showTemptSuggestion(isNaN(val) ? 0 : val);
 });
 
-// Today (daily plan)
-function todayKey(){
-  const d = new Date();
+// Today (weekly plan) + Meals
+function dateKey(d){
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
-document.getElementById('add-today-btn').addEventListener('click', async ()=>{
-  const input = document.getElementById('new-today-item');
-  const val = input.value.trim();
-  if(!val) return;
-  dailyPlan.push({ id:'d'+Date.now(), text: val, date: todayKey(), done:false, completedTs:null, ts:Date.now() });
-  input.value = '';
-  await saveDailyPlan();
-  renderDailyPlan();
-});
-document.getElementById('new-today-item').addEventListener('keydown', (e)=>{
-  if(e.key === 'Enter') document.getElementById('add-today-btn').click();
-});
-function renderDailyPlan(){
-  const key = todayKey();
-  document.getElementById('today-date-label').textContent = new Date().toLocaleDateString(undefined, { weekday:'long', month:'long', day:'numeric' });
-  const items = dailyPlan.filter(d=>d.date===key);
-  const doneCount = items.filter(d=>d.done).length;
-  document.getElementById('today-progress').textContent = `${doneCount} of ${items.length} done`;
+function todayKey(){ return dateKey(new Date()); }
+function getWeekDates(){
+  const today = new Date();
+  const dow = today.getDay(); // 0=Sun..6=Sat
+  const mondayOffset = dow === 0 ? -6 : 1 - dow;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + mondayOffset);
+  const days = [];
+  const names = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  for(let i=0;i<7;i++){
+    const d = new Date(monday);
+    d.setDate(monday.getDate()+i);
+    days.push({ key: dateKey(d), label: names[i], sub: d.toLocaleDateString(undefined,{month:'short',day:'numeric'}), isToday: dateKey(d) === todayKey() });
+  }
+  return days;
+}
+function setWeekRangeLabel(elId, days){
+  const first = days[0], last = days[6];
+  document.getElementById(elId).textContent = `This week — ${first.sub} to ${last.sub}`;
+}
 
-  const list = document.getElementById('today-list');
-  if(items.length === 0){ list.innerHTML = '<div class="empty">Nothing planned yet for today — add a few things above.</div>'; return; }
-  const sorted = [...items].sort((a,b)=> (a.done - b.done) || (a.ts - b.ts));
-  list.innerHTML = sorted.map(d=>`
-    <div class="action-item ${d.done?'done':''}" data-id="${d.id}">
-      <input type="checkbox" ${d.done?'checked':''}>
-      <div style="flex:1;"><div class="action-text">${escapeHtml(d.text)}</div></div>
-      <button class="del-x" title="Delete">✕</button>
-    </div>`).join('');
-  list.querySelectorAll('input[type=checkbox]').forEach(cb=>{
-    cb.addEventListener('change', async ()=>{
-      const id = cb.closest('.action-item').dataset.id;
-      const item = dailyPlan.find(x=>x.id===id);
-      if(item){
-        item.done = cb.checked;
-        item.completedTs = cb.checked ? Date.now() : null;
-        await saveDailyPlan(); renderDailyPlan(); renderActions();
-      }
+function renderDailyPlan(){
+  const days = getWeekDates();
+  setWeekRangeLabel('week-range-label', days);
+  const grid = document.getElementById('week-grid');
+  grid.innerHTML = days.map(day=>{
+    const items = dailyPlan.filter(d=>d.date===day.key);
+    const sorted = [...items].sort((a,b)=> (a.done - b.done) || (a.ts - b.ts));
+    const listHtml = sorted.length === 0
+      ? '<div class="zone-empty-text">Nothing yet.</div>'
+      : sorted.map(d=>`
+        <div class="day-task ${d.done?'done':''}" data-id="${d.id}">
+          <input type="checkbox" ${d.done?'checked':''}>
+          <div class="day-task-text">${escapeHtml(d.text)}</div>
+          ${d.estimate ? `<div class="day-task-est">${escapeHtml(d.estimate)}</div>` : ''}
+          <button class="del-x" title="Delete">✕</button>
+        </div>`).join('');
+    return `<div class="day-col ${day.isToday?'is-today':''}" data-date="${day.key}">
+      <div class="day-col-header">${day.label}<span class="date-sub">${day.sub}</span></div>
+      <div class="day-tasks">${listHtml}</div>
+      <div class="day-add-row">
+        <input type="text" class="day-new-text" placeholder="Add a task...">
+        <div class="est-row">
+          <input type="text" class="day-new-est" placeholder="e.g. 30 min">
+          <button class="day-add-btn">Add</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.day-col').forEach(col=>{
+    const date = col.dataset.date;
+    col.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+      cb.addEventListener('change', async ()=>{
+        const id = cb.closest('.day-task').dataset.id;
+        const item = dailyPlan.find(x=>x.id===id);
+        if(item){
+          item.done = cb.checked;
+          item.completedTs = cb.checked ? Date.now() : null;
+          await saveDailyPlan(); renderDailyPlan(); renderActions();
+        }
+      });
     });
+    col.querySelectorAll('.del-x').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = btn.closest('.day-task').dataset.id;
+        dailyPlan = dailyPlan.filter(x=>x.id !== id);
+        await saveDailyPlan(); renderDailyPlan(); renderActions();
+      });
+    });
+    const addBtn = col.querySelector('.day-add-btn');
+    const textInput = col.querySelector('.day-new-text');
+    const estInput = col.querySelector('.day-new-est');
+    function addTask(){
+      const val = textInput.value.trim();
+      if(!val) return;
+      const est = estInput.value.trim();
+      dailyPlan.push({ id:'d'+Date.now()+Math.random().toString(36).slice(2,6), text: val, estimate: est, date, done:false, completedTs:null, ts:Date.now() });
+      saveDailyPlan().then(renderDailyPlan);
+    }
+    addBtn.addEventListener('click', addTask);
+    textInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') addTask(); });
+    estInput.addEventListener('keydown', (e)=>{ if(e.key==='Enter') addTask(); });
   });
-  list.querySelectorAll('.del-x').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      const id = btn.closest('.action-item').dataset.id;
-      dailyPlan = dailyPlan.filter(x=>x.id !== id);
-      await saveDailyPlan();
-      renderDailyPlan();
-      renderActions();
+}
+
+const MEAL_SLOTS = [
+  {id:'breakfast', label:'Breakfast'},
+  {id:'snack1', label:'Snack 1'},
+  {id:'lunch', label:'Lunch'},
+  {id:'snack2', label:'Snack 2'},
+  {id:'dinner', label:'Dinner'}
+];
+function renderMeals(){
+  const days = getWeekDates();
+  setWeekRangeLabel('meals-week-range-label', days);
+  const grid = document.getElementById('meals-grid');
+  grid.innerHTML = days.map(day=>{
+    const slotsHtml = MEAL_SLOTS.map(slot=>{
+      const entry = mealPlan.find(m=>m.date===day.key && m.slot===slot.id);
+      const val = entry ? entry.text : '';
+      return `<div class="meal-slot">
+        <label>${slot.label}</label>
+        <input type="text" class="meal-input" data-date="${day.key}" data-slot="${slot.id}" value="${escapeAttr(val)}" placeholder="—">
+      </div>`;
+    }).join('');
+    return `<div class="day-col ${day.isToday?'is-today':''}">
+      <div class="day-col-header">${day.label}<span class="date-sub">${day.sub}</span></div>
+      ${slotsHtml}
+    </div>`;
+  }).join('');
+
+  grid.querySelectorAll('.meal-input').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{
+      const date = inp.dataset.date, slot = inp.dataset.slot, text = inp.value.trim();
+      let entry = mealPlan.find(m=>m.date===date && m.slot===slot);
+      if(entry){ entry.text = text; }
+      else { mealPlan.push({ id:'m'+Date.now()+Math.random().toString(36).slice(2,6), date, slot, text, ts:Date.now() }); }
+      await saveMealPlan();
     });
   });
 }
 
 // Actions
+document.getElementById('debt-total-save').addEventListener('click', async ()=>{
+  const val = parseFloat(document.getElementById('debt-total-input').value);
+  if(isNaN(val) || val < 0) return;
+  debtTotal = val;
+  await saveDebt();
+  renderDebt();
+});
+document.getElementById('add-payment-btn').addEventListener('click', async ()=>{
+  const amountRaw = document.getElementById('new-payment-amount').value;
+  const amount = parseFloat(amountRaw);
+  if(isNaN(amount) || amount <= 0) return;
+  const note = document.getElementById('new-payment-note').value.trim();
+  debtPayments.push({ id:'pay'+Date.now(), amount, note, ts: Date.now() });
+  document.getElementById('new-payment-amount').value = '';
+  document.getElementById('new-payment-note').value = '';
+  await saveDebt();
+  renderDebt();
+});
+function renderDebt(){
+  document.getElementById('debt-total-input').value = debtTotal || '';
+  const totalPaid = debtPayments.reduce((s,p)=> s + Number(p.amount||0), 0);
+  const remaining = Math.max(0, debtTotal - totalPaid);
+  const pct = debtTotal > 0 ? Math.min(100, Math.round(100*totalPaid/debtTotal)) : 0;
+  document.getElementById('debt-remaining').textContent = '$' + remaining.toFixed(2);
+  document.getElementById('debt-paid-pct').textContent = pct + '%';
+  document.getElementById('debt-progress-bar').style.width = pct + '%';
+
+  const resistedTotal = urges.reduce((s,u)=> s + (!u.spent && u.temptedAmount ? Number(u.temptedAmount) : 0), 0);
+  document.getElementById('debt-resisted-total').textContent = '$' + resistedTotal.toFixed(2);
+
+  const note = document.getElementById('debt-context-note');
+  if(debtTotal > 0 && resistedTotal > 0){
+    const resistedPct = Math.round(100*resistedTotal/debtTotal);
+    note.textContent = `If every dollar you've resisted spending went toward this, you'd be about ${resistedPct}% further along than your logged payments alone show.`;
+  } else {
+    note.textContent = '';
+  }
+
+  const list = document.getElementById('payment-list');
+  if(debtPayments.length === 0){
+    list.innerHTML = '<div class="empty">No payments logged yet.</div>';
+  } else {
+    const sorted = [...debtPayments].sort((a,b)=>b.ts-a.ts);
+    list.innerHTML = sorted.map(p=>{
+      const d = new Date(p.ts);
+      return `<div class="urge-entry" data-id="${p.id}">
+        <span class="urge-entry-main">$${Number(p.amount).toFixed(2)}${p.note ? ' — '+escapeHtml(p.note) : ''}</span>
+        <span class="urge-meta">${d.toLocaleDateString()}</span>
+        <button class="del-x" title="Delete">✕</button>
+      </div>`;
+    }).join('');
+    list.querySelectorAll('.del-x').forEach(btn=>{
+      btn.addEventListener('click', async ()=>{
+        const id = btn.closest('.urge-entry').dataset.id;
+        debtPayments = debtPayments.filter(p=>p.id !== id);
+        await saveDebt();
+        renderDebt();
+      });
+    });
+  }
+}
+
 const PRIORITY_POINTS = { high: 3, medium: 2, low: 1 };
 const PRIORITY_ORDER = { high: 0, medium: 1, low: 2 };
 const LEVELS = [
@@ -1244,7 +1597,12 @@ document.getElementById('export-btn').addEventListener('click', ()=>{
     wishlist: wishlist,
     custom_tags: customTags,
     custom_tiny_wins: customTinyWins,
-    custom_question_sets: customQuestionSets
+    custom_question_sets: customQuestionSets,
+    hidden_base_tags: hiddenBaseTags,
+    custom_triggers: customTriggers,
+    meal_plan: mealPlan,
+    debt_total: debtTotal,
+    debt_payments: debtPayments
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -1284,17 +1642,80 @@ document.getElementById('import-file-input').addEventListener('change', (e)=>{
     customTags = data.custom_tags || [];
     customTinyWins = data.custom_tiny_wins || [];
     customQuestionSets = data.custom_question_sets || {};
+    hiddenBaseTags = data.hidden_base_tags || [];
+    customTriggers = data.custom_triggers || [];
+    mealPlan = data.meal_plan || [];
+    debtTotal = data.debt_total || 0;
+    debtPayments = data.debt_payments || [];
     await saveEntries(); await saveUrges(); await saveActions(); await saveEnergy();
-    await saveDailyPlan(); await saveWishlist(); await saveCustomTags(); await saveCustomTinyWins(); await saveCustomQuestionSets();
+    await saveDailyPlan(); await saveWishlist(); await saveCustomTags(); await saveCustomTinyWins(); await saveCustomQuestionSets(); await saveHiddenBaseTags(); await saveCustomTriggers(); await saveMealPlan(); await saveDebt();
     rebuildTagMeta();
     renderCustomTagButtons();
     renderCustomTinyWinButtons();
+    renderCustomTriggerButtons();
     populateActionTagSelect();
-    renderMap(); renderUrges(); renderActions(); renderEnergy(); renderDailyPlan(); renderWishlist();
+    renderMap(); renderUrges(); renderActions(); renderEnergy(); renderDailyPlan(); renderWishlist(); renderMeals(); renderDebt();
     document.getElementById('last-export-note').textContent = 'Backup restored just now.';
   };
   reader.readAsText(file);
   e.target.value = '';
+});
+
+// Hourly check-in notification
+function generateQuickReport(){
+  const key = todayKey();
+  const todayTasks = dailyPlan.filter(d=>d.date===key);
+  const doneTasks = todayTasks.filter(d=>d.done).length;
+  const todayUrges = urges.filter(u=> new Date(u.ts).toDateString() === new Date().toDateString());
+  const spentToday = todayUrges.reduce((s,u)=> s + (u.spent ? Number(u.amount||0) : 0), 0);
+  const resistedToday = todayUrges.reduce((s,u)=> s + (!u.spent && u.temptedAmount ? Number(u.temptedAmount) : 0), 0);
+  const checkedInToday = energyLogs.some(l=> l.type==='checkin' && new Date(l.ts).toDateString() === new Date().toDateString());
+
+  const parts = [];
+  parts.push(`${doneTasks}/${todayTasks.length} tasks done today`);
+  if(todayUrges.length > 0){
+    parts.push(`${todayUrges.length} urge${todayUrges.length===1?'':'s'} logged`);
+    if(spentToday > 0) parts.push(`$${spentToday.toFixed(0)} spent`);
+    if(resistedToday > 0) parts.push(`$${resistedToday.toFixed(0)} resisted`);
+  }
+  if(!checkedInToday) parts.push(`energy check-in still open`);
+  return parts.join(' · ');
+}
+function sendQuickReportNotification(){
+  if(!('Notification' in window)) return;
+  if(Notification.permission !== 'granted') return;
+  try{
+    new Notification('The Map Room — quick check-in', { body: generateQuickReport() });
+  }catch(e){}
+}
+function maybeSendHourlyNotification(){
+  if(notificationsEnabled) sendQuickReportNotification();
+}
+if('Notification' in window && Notification.permission === 'default'){
+  Notification.requestPermission();
+}
+setInterval(maybeSendHourlyNotification, 60*60*1000);
+
+document.getElementById('notifications-toggle').addEventListener('change', async (e)=>{
+  notificationsEnabled = e.target.checked;
+  if(notificationsEnabled && 'Notification' in window && Notification.permission === 'default'){
+    await Notification.requestPermission();
+  }
+  await persistAll();
+});
+document.getElementById('test-notification-btn').addEventListener('click', async ()=>{
+  if(!('Notification' in window)){
+    alert('This browser/environment does not support notifications.');
+    return;
+  }
+  if(Notification.permission === 'default'){
+    await Notification.requestPermission();
+  }
+  if(Notification.permission === 'granted'){
+    sendQuickReportNotification();
+  } else {
+    alert('Notifications are blocked. Check your system or browser notification settings for this app.');
+  }
 });
 
 loadAll();
